@@ -39,23 +39,20 @@ function renderItems(items) {
 
   items.forEach(item => {
     const col = document.createElement('div');
-    // Use responsive row-cols classes instead of fixed col-md-4
-    col.className = 'col'; // Let Bootstrap row-cols-* handle sizing
-
+    col.className = 'col';
     col.innerHTML = `
-      <div class="card h-100 menu-card shadow-sm">
-        ${item.image_path ? `<img src="${item.image_path}" class="menu-img card-img-top" alt="${item.name}">` : ''}
-        <div class="card-body">
-          <h5 class="card-title">${item.name}</h5>
-          <p class="card-text">${item.description || ''}</p>
-          <p class="fw-bold">${item.price.toFixed(3)} BHD</p>
+      <div class="card menu-card h-100 shadow-sm">
+        ${item.image_path ? `<img src="${item.image_path}" class="menu-img">` : ''}
+        <div class="card-body d-flex flex-column">
+          <h5 class="card-title mb-1">${item.name}</h5>
+          <p class="card-text mb-1">${item.description || ''}</p>
+          <p class="fw-bold mt-auto mb-0">${item.price.toFixed(3)} BHD</p>
         </div>
       </div>
     `;
     menuItemsDiv.appendChild(col);
   });
 }
-
 
 // Search/filter functionality
 searchInput.addEventListener('input', () => {
