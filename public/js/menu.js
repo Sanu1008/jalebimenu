@@ -32,17 +32,19 @@ function populateCategoryFilter() {
 // Render items as cards
 function renderItems(items) {
   menuItemsDiv.innerHTML = '';
-  if(items.length === 0){
+  if (items.length === 0) {
     menuItemsDiv.innerHTML = `<p class="text-center">No items found.</p>`;
     return;
   }
 
   items.forEach(item => {
     const col = document.createElement('div');
-    col.className = 'col-md-4 mb-3';
+    // Use responsive row-cols classes instead of fixed col-md-4
+    col.className = 'col'; // Let Bootstrap row-cols-* handle sizing
+
     col.innerHTML = `
-      <div class="card h-100 shadow-sm">
-        ${item.image_path ? `<img src="${item.image_path}" class="card-img-top">` : ''}
+      <div class="card h-100 menu-card shadow-sm">
+        ${item.image_path ? `<img src="${item.image_path}" class="menu-img card-img-top" alt="${item.name}">` : ''}
         <div class="card-body">
           <h5 class="card-title">${item.name}</h5>
           <p class="card-text">${item.description || ''}</p>
@@ -53,6 +55,7 @@ function renderItems(items) {
     menuItemsDiv.appendChild(col);
   });
 }
+
 
 // Search/filter functionality
 searchInput.addEventListener('input', () => {
