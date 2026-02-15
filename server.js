@@ -15,11 +15,27 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({ secret: 'secret', resave: false, saveUninitialized: true }));
 
-// Database
-const db = new sqlite3.Database('./database/menu.db', err => {
-  if (err) console.error(err.message);
-  else console.log('Connected to SQLite database.');
+const fs = require('fs');
+const path = require('path');
+
+// Create a writable folder 'data' if it doesn't exist
+const dbFolder = path.join(__dirname, 'data');
+if (!fs.existsSync(dbFolder)) {
+    fs.mkdirSync(dbFolder);
+}
+
+// Absolute path to DB file
+const dbPath = path.join(dbFolder, 'menu.db');
+
+// Connect to SQLite
+const db = new sqlite3.Database(dbPath, (err) => {
+    if (err) {
+        console.error('❌ SQLite error:', err.message);
+    } else {
+        console.log('✅ SQLite connected:', dbPath);
+    }
 });
+
 
 // Create table if not exists
 db.run(`CREATE TABLE IF NOT EXISTS items (
