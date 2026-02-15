@@ -11,3 +11,21 @@
 .card-text {
   font-size: 0.9rem;
 }
+.card-title {
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.card-text {
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+@media (max-width: 576px) {
+  .card-title {
+    font-size: 1.1rem;
+  }
+  .card-text {
+    font-size: 0.85rem;
+  }
+}
