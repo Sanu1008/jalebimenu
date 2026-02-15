@@ -16,7 +16,6 @@ app.use(express.json());
 app.use(session({ secret: 'secret', resave: false, saveUninitialized: true }));
 
 const fs = require('fs');
-const path = require('path');
 
 // Create a writable folder 'data' if it doesn't exist
 const dbFolder = path.join(__dirname, 'data');
