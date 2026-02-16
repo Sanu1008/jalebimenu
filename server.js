@@ -1,10 +1,9 @@
-
 const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
 const path = require('path');
 const bcrypt = require('bcryptjs');
-const pool = require('./db'); // MySQL connection file
+const pool = require('./db'); // MySQL connection pool
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -73,7 +72,8 @@ app.get('/api/items', async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM items');
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
@@ -88,7 +88,8 @@ app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
     );
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
@@ -108,7 +109,8 @@ app.put('/api/items/:id', isAdmin, upload.single('image'), async (req, res) => {
     await pool.query(sql, params);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
@@ -119,7 +121,8 @@ app.delete('/api/items/:id', isAdmin, async (req, res) => {
     await pool.query('DELETE FROM items WHERE id=?', [id]);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
