@@ -12,17 +12,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---------------- Fetch menu items ----------------
   async function fetchMenuItems() {
-    try {
-      const res = await fetch('/api/items');
-      if (!res.ok) throw new Error('Failed to fetch items');
-      allItems = await res.json();
-      populateCategoryFilter();
-      renderItems(allItems);
-    } catch (err) {
-      menuItemsDiv.innerHTML = `<p class="text-danger">Unable to load menu. Please try later.</p>`;
-      console.error(err);
-    }
+  try {
+    const res = await fetch('/api/items');
+    if (!res.ok) throw new Error(`Failed to fetch items. Status: ${res.status}`);
+    const data = await res.json();
+    allItems = data.map(item => ({
+      ...item,
+      price: Number(item.price)  // convert price to number
+    }));
+    populateCategoryFilter();
+    renderItems(allItems);
+  } catch (err) {
+    menuItemsDiv.innerHTML = `<p class="text-danger">Unable to load menu. Please try later.</p>`;
+    console.error('Menu fetch error:', err);
   }
+}
+
 
   // ---------------- Populate category filter ----------------
   function populateCategoryFilter() {
