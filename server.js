@@ -1,19 +1,16 @@
+
 const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
 const path = require('path');
 const bcrypt = require('bcryptjs');
-const pool = require('./db'); // MySQL connection pool
+const pool = require('./db'); // MySQL connection file
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ---------------- Middleware ----------------
-// Serve static files
-app.use('/images', express.static(path.join(__dirname, 'public/images')));
-app.use('/js', express.static(path.join(__dirname, 'public/js')));
 app.use(express.static(path.join(__dirname, 'html')));
-
-// Parse JSON and form data
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({ secret: 'secret', resave: false, saveUninitialized: true }));
@@ -74,12 +71,9 @@ app.get('/api/admin/logout', (req, res) => {
 app.get('/api/items', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM items');
-    // Ensure price is number
-    const data = rows.map(r => ({ ...r, price: Number(r.price) }));
-    res.json(data);
+    res.json(rows);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -94,8 +88,7 @@ app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
     );
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -104,23 +97,18 @@ app.put('/api/items/:id', isAdmin, upload.single('image'), async (req, res) => {
   try {
     const { name, category, price, description } = req.body;
     const id = req.params.id;
-
     let sql = 'UPDATE items SET name=?, category=?, price=?, description=?';
     const params = [name, category, price, description];
-
     if (req.file) {
       sql += ', image_path=?';
       params.push('/images/' + req.file.filename);
     }
-
     sql += ' WHERE id=?';
     params.push(id);
-
     await pool.query(sql, params);
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -131,8 +119,7 @@ app.delete('/api/items/:id', isAdmin, async (req, res) => {
     await pool.query('DELETE FROM items WHERE id=?', [id]);
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: err.message });
   }
 });
 
