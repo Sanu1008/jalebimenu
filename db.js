@@ -1,11 +1,12 @@
 const mysql = require('mysql2/promise');
-console.log("MYSQL_URL exists:", !!process.env.MYSQL_URL); // 👈 ADD HERE
-console.log("MYSQL_URL value:", process.env.MYSQL_URL);    // optional (for debugging)
+
 const pool = mysql.createPool({
-  uri: process.env.MYSQL_URL,   // ✅ single Railway variable
-  waitForConnections: true,
-  connectionLimit: 10,
-  ssl: { rejectUnauthorized: false } // sometimes required on Railway
+  host: process.env.MYSQLHOST,
+  user: process.env.MYSQLUSER,
+  password: process.env.MYSQLPASSWORD,
+  database: process.env.MYSQL_DATABASE,
+  port: process.env.MYSQLPORT,
+  ssl: { rejectUnauthorized: false }
 });
 
 module.exports = pool;
