@@ -1,67 +1,54 @@
 const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const bcrypt = require('bcryptjs');
-
+const pool = require('./db'); // MySQL connection file
 const app = express();
-//const PORT = 3000;
 const PORT = process.env.PORT || 3000;
-// Static files
+
+// ---------------- Middleware ----------------
 app.use(express.static(path.join(__dirname, 'html')));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({ secret: 'secret', resave: false, saveUninitialized: true }));
 
-const fs = require('fs');
-
-// Create a writable folder 'data' if it doesn't exist
-const dbFolder = path.join(__dirname, 'data');
-if (!fs.existsSync(dbFolder)) {
-    fs.mkdirSync(dbFolder);
-}
-
-// Absolute path to DB file
-const dbPath = path.join(dbFolder, 'menu.db');
-
-// Connect to SQLite
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error('❌ SQLite error:', err.message);
-    } else {
-        console.log('✅ SQLite connected:', dbPath);
-    }
-});
-
-
-// Create table if not exists
-db.run(`CREATE TABLE IF NOT EXISTS items (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  category TEXT NOT NULL,
-  price REAL NOT NULL,
-  description TEXT,
-  image_path TEXT
-)`);
-
-// Admin credentials
-const ADMIN_USER = 'admin';
-const ADMIN_PASS = bcrypt.hashSync('1234', 10);
-
-// Middleware
-function isAdmin(req, res, next) {
-  if (req.session.loggedIn) next();
-  else res.status(401).json({ error: 'Unauthorized' });
-}
-
-// Multer
+// ---------------- Multer Setup ----------------
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'public/images/'),
   filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
 });
 const upload = multer({ storage });
+
+// ---------------- Admin Setup ----------------
+const ADMIN_USER = 'admin';
+const ADMIN_PASS = bcrypt.hashSync('1234', 10);
+
+function isAdmin(req, res, next) {
+  if (req.session.loggedIn) next();
+  else res.status(401).json({ error: 'Unauthorized' });
+}
+
+// ---------------- Create Tables ----------------
+async function createTables() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS items (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        category VARCHAR(100) NOT NULL,
+        price DECIMAL(10,3) NOT NULL,
+        description TEXT,
+        image_path TEXT
+      );
+    `);
+    console.log('✅ MySQL tables ready');
+  } catch (err) {
+    console.error('❌ Table creation error:', err);
+  }
+}
+createTables();
 
 // ---------------- APIs ----------------
 
@@ -79,56 +66,66 @@ app.get('/api/admin/logout', (req, res) => {
   res.json({ success: true });
 });
 
-// Items CRUD
-app.get('/api/items', (req, res) => {
-  db.all(`SELECT * FROM items`, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+// Get all items
+app.get('/api/items', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM items');
     res.json(rows);
-  });
-});
-
-app.post('/api/items', isAdmin, upload.single('image'), (req, res) => {
-  const { name, category, price, description } = req.body;
-  const image_path = req.file ? '/images/' + req.file.filename : '';
-  db.run(`INSERT INTO items (name, category, price, description, image_path) VALUES (?, ?, ?, ?, ?)`,
-    [name, category, price, description, image_path],
-    err => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ success: true });
-    });
-});
-
-app.put('/api/items/:id', isAdmin, upload.single('image'), (req, res) => {
-  const { name, category, price, description } = req.body;
-  const id = req.params.id;
-  const image_path = req.file ? '/images/' + req.file.filename : null;
-
-  let sql = `UPDATE items SET name = ?, category = ?, price = ?, description = ?`;
-  const params = [name, category, price, description];
-  if (image_path) {
-    sql += `, image_path = ?`;
-    params.push(image_path);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-  sql += ` WHERE id = ?`;
-  params.push(id);
-
-  db.run(sql, params, err => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true });
-  });
 });
 
-app.delete('/api/items/:id', isAdmin, (req, res) => {
-  const id = req.params.id;
-  db.run(`DELETE FROM items WHERE id = ?`, [id], err => {
-    if (err) return res.status(500).json({ error: err.message });
+// Add new item
+app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
+  try {
+    const { name, category, price, description } = req.body;
+    const image_path = req.file ? '/images/' + req.file.filename : '';
+    await pool.query(
+      'INSERT INTO items (name, category, price, description, image_path) VALUES (?, ?, ?, ?, ?)',
+      [name, category, price, description, image_path]
+    );
     res.json({ success: true });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// HTML Pages
+// Update item
+app.put('/api/items/:id', isAdmin, upload.single('image'), async (req, res) => {
+  try {
+    const { name, category, price, description } = req.body;
+    const id = req.params.id;
+    let sql = 'UPDATE items SET name=?, category=?, price=?, description=?';
+    const params = [name, category, price, description];
+    if (req.file) {
+      sql += ', image_path=?';
+      params.push('/images/' + req.file.filename);
+    }
+    sql += ' WHERE id=?';
+    params.push(id);
+    await pool.query(sql, params);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete item
+app.delete('/api/items/:id', isAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    await pool.query('DELETE FROM items WHERE id=?', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------- HTML Pages ----------------
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'html/admin.html')));
 app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'html/dashboard.html')));
 app.get('/menu', (req, res) => res.sendFile(path.join(__dirname, 'html/menu.html')));
 
+// ---------------- Start Server ----------------
 app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
