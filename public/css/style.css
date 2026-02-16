@@ -1,31 +1,61 @@
+/* Card Image */
 .card-img-top {
-  height: 150px;
+  width: 100%;
+  aspect-ratio: 1 / 1;   /* square modern look */
   object-fit: cover;
+  border-radius: 12px 12px 0 0;
 }
 
-.card-title {
-  font-size: 1.2rem;
-  font-weight: bold;
+/* Card Container */
+.menu-card {
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.card-text {
-  font-size: 0.9rem;
+.menu-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
 }
+
+/* Card Body */
+.card-body {
+  padding: 0.75rem;
+}
+
+/* Title */
 .card-title {
-  font-size: 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   margin-bottom: 0.25rem;
 }
 
+/* Description */
 .card-text {
-  font-size: 0.875rem;
-  margin-bottom: 0.25rem;
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-bottom: 0.4rem;
 }
 
+/* Price */
+.price {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #198754;
+}
+
+/* Mobile Tweaks */
 @media (max-width: 576px) {
   .card-title {
-    font-size: 1.1rem;
+    font-size: 0.9rem;
   }
+
   .card-text {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
+  }
+
+  .price {
+    font-size: 0.9rem;
   }
 }

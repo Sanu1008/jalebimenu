@@ -41,12 +41,12 @@ function renderItems(items) {
     const col = document.createElement('div');
     col.className = 'col';
     col.innerHTML = `
-      <div class="card menu-card h-100 shadow-sm">
+      <div class="card menu-card shadow-sm">
         ${item.image_path ? `<img src="${item.image_path}" class="menu-img">` : ''}
         <div class="card-body d-flex flex-column">
           <h5 class="card-title mb-1">${item.name}</h5>
           <p class="card-text mb-1">${item.description || ''}</p>
-          <p class="fw-bold mt-auto mb-0">${item.price.toFixed(3)} BHD</p>
+          <p class="price mb-0">${item.price.toFixed(3)} BHD</p>
         </div>
       </div>
     `;
