@@ -8,8 +8,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ---------------- Middleware ----------------
+// Serve static files
+app.use('/images', express.static(path.join(__dirname, 'public/images')));
+app.use('/js', express.static(path.join(__dirname, 'public/js')));
 app.use(express.static(path.join(__dirname, 'html')));
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Parse JSON and form data
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({ secret: 'secret', resave: false, saveUninitialized: true }));
@@ -70,7 +74,9 @@ app.get('/api/admin/logout', (req, res) => {
 app.get('/api/items', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM items');
-    res.json(rows);
+    // Ensure price is number
+    const data = rows.map(r => ({ ...r, price: Number(r.price) }));
+    res.json(data);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Database error' });
@@ -98,14 +104,18 @@ app.put('/api/items/:id', isAdmin, upload.single('image'), async (req, res) => {
   try {
     const { name, category, price, description } = req.body;
     const id = req.params.id;
+
     let sql = 'UPDATE items SET name=?, category=?, price=?, description=?';
     const params = [name, category, price, description];
+
     if (req.file) {
       sql += ', image_path=?';
       params.push('/images/' + req.file.filename);
     }
+
     sql += ' WHERE id=?';
     params.push(id);
+
     await pool.query(sql, params);
     res.json({ success: true });
   } catch (err) {
