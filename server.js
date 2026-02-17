@@ -64,27 +64,36 @@ app.get('/api/admin/logout', (req, res) => {
 });
 
 // Get all items and convert BLOB to Base64 string for frontend display
+// Get all items and convert BLOB to Base64 string for frontend display
 app.get('/api/items', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM items');
 
-    // Convert BLOB or Hex to Base64
     const items = rows.map(item => {
       let imageBase64 = '';
       
       if (item.image) {
-        // Check if the image is stored as hexadecimal string
+        let buffer = item.image;
+        
+        // Handle cases where DB returns hex string instead of buffer
         if (typeof item.image === 'string') {
-          const buffer = hexToBuffer(item.image);  // Convert hex string to buffer
-          imageBase64 = `data:image/jpeg;base64,${buffer.toString('base64')}`;
-        } else {
-          // If it's a BLOB, convert it directly to Base64
-          imageBase64 = `data:image/jpeg;base64,${item.image.toString('base64')}`;
+           const hex = item.image.replace(/^0x/, '');
+           buffer = Buffer.from(hex, 'hex');
         }
+
+        // Detect if PNG or JPEG (default to jpeg)
+        // PNG starts with hex 89 50 4E 47
+        const isPng = buffer.length > 3 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E;
+        const mimeType = isPng ? 'image/png' : 'image/jpeg';
+
+        imageBase64 = `data:${mimeType};base64,${buffer.toString('base64')}`;
       }
 
+      // Create a new object WITHOUT the raw 'image' buffer to reduce response size
+      const { image, ...rest } = item;
+
       return {
-        ...item,
+        ...rest,
         image_base64: imageBase64
       };
     });

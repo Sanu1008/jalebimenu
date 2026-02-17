@@ -5,7 +5,9 @@ const loginForm = document.getElementById('loginForm');
 const loginError = document.getElementById('loginError');
 const logoutBtn = document.getElementById('logoutBtn');
 const addItemForm = document.getElementById('addItemForm');
-const itemsTableBody = document.querySelector('#itemsTable tbody');
+const itemsTableBody = document.getElementById('itemsTableBody');
+// OR
+// const itemsTableBody = document.querySelector('#itemsTableBody');
 
 // ---------------- LOGIN ----------------
 loginForm.addEventListener('submit', async (e) => {
