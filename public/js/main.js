@@ -146,9 +146,21 @@ editItemForm.addEventListener('submit', async e => {
   const id = document.getElementById('editId').value;
 
   // ---------------- COLLECT EXTRA PRICES ----------------
+  const mainPrice = document.getElementById('editPrice').value.trim();
   const labels = document.querySelectorAll('#extraPricesList .price-label');
   const values = document.querySelectorAll('#extraPricesList .price-value');
+let hasExtraPrice = false;
 
+labels.forEach((input, idx) => {
+  const label = input.value.trim();
+  const price = values[idx].value.trim();
+  if (label && price) hasExtraPrice = true;
+});
+
+if (!mainPrice && !hasExtraPrice) {
+  alert('Please enter at least one price (main or extra)');
+  return;
+}
   labels.forEach((input, idx) => {
     const label = input.value.trim();
     const price = values[idx].value.trim();
