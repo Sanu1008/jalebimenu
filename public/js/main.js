@@ -82,7 +82,18 @@ function renderTable() {
         <td>${item.id}</td>
         <td>${item.name}</td>
         <td>${item.category}</td>
-        <td>${item.price}</td>
+        <td>
+  ${
+    item.extra_prices && item.extra_prices.length > 0
+      ? item.extra_prices
+          .map(p => `<strong>${p.label}</strong>: ${parseFloat(p.price).toFixed(3)} BHD`)
+          .join('<br>')
+      : (item.price !== null && item.price !== undefined
+          ? `${parseFloat(item.price).toFixed(3)} BHD`
+          : '')
+  }
+</td>
+
         <td>${item.description || ''}</td>
         <td>${item.image_base64 ? `<img src="${item.image_base64}" width="50">` : ''}</td>
         <td>
