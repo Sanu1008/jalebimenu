@@ -73,11 +73,14 @@ document.addEventListener('DOMContentLoaded', () => {
               ${priceOptions}
             </select>
 
-            <div class="input-group input-group-sm mb-2">
-              <button class="btn btn-outline-secondary qty-minus">-</button>
-              <input type="number" class="form-control text-center qty-input" value="1" min="1">
-              <button class="btn btn-outline-secondary qty-plus">+</button>
-            </div>
+            <div class="qty-wrapper d-flex justify-content-center align-items-center gap-2 mb-2">
+  <button class="btn btn-outline-secondary qty-minus">−</button>
+
+  <span class="qty-badge badge bg-success px-3">0</span>
+
+  <button class="btn btn-outline-secondary qty-plus">+</button>
+</div>
+
 <div class="text-center small text-success fw-bold">
   Tap + to add
 </div>
@@ -105,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
   categoryFilter.addEventListener('change', () =>
     searchInput.dispatchEvent(new Event('input'))
   );
-// ---------------- Card Qty + - (Instant Cart Update + textbox sync) ----------------
+// ---------------- Card Qty + - (Instant Cart Update + badge sync) ----------------
 document.addEventListener('click', e => {
 
   const card = e.target.closest('.card');
@@ -113,7 +116,7 @@ document.addEventListener('click', e => {
 
   const id = card.dataset.id;
   const price = parseFloat(card.querySelector('.price-select').value);
-  const input = card.querySelector('.qty-input');
+  const badge = card.querySelector('.qty-badge'); // ⭐ use badge
 
   const item = allItems.find(i => i.id == id);
   if (!item) return;
@@ -121,10 +124,13 @@ document.addEventListener('click', e => {
   const key = id + '-' + price;
   const existing = cart.find(c => c.key === key);
 
+  let current = parseInt(badge.textContent);
+
   // ➕ ADD
   if (e.target.classList.contains('qty-plus')) {
 
-    input.value = parseInt(input.value) + 1;   // ⭐ update textbox
+    current++;
+    badge.textContent = current;   // ⭐ update badge
 
     if (existing) existing.qty++;
     else cart.push({ key, name: item.name, price, qty: 1 });
@@ -135,11 +141,10 @@ document.addEventListener('click', e => {
   // ➖ REMOVE
   if (e.target.classList.contains('qty-minus')) {
 
-    let current = parseInt(input.value);
-
     if (current <= 0) return;
 
-    input.value = current - 1;   // ⭐ update textbox
+    current--;
+    badge.textContent = current;   // ⭐ update badge
 
     if (!existing) return;
 
