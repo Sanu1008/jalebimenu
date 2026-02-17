@@ -35,7 +35,7 @@ async function createTables() {
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         category VARCHAR(100) NOT NULL,
-        price DECIMAL(10,3) NOT NULL,
+        price DECIMAL(10,3) NULL,
         description TEXT,
         image LONGBLOB
       );
@@ -119,11 +119,14 @@ app.get('/api/items', async (req, res) => {
 app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
   try {
     const { name, category, price, description } = req.body;
+
+// Convert empty string to NULL
+const priceValue = price && price.trim() !== '' ? parseFloat(price) : null;
     const imageData = req.file ? req.file.buffer : null;
 
     const [result] = await pool.query(
       'INSERT INTO items (name, category, price, description, image) VALUES (?, ?, ?, ?, ?)',
-      [name, category, price, description, imageData]
+      [name, category, priceValue, description, imageData]
     );
 
     const itemId = result.insertId;
@@ -153,11 +156,12 @@ app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
 app.put('/api/items/:id', isAdmin, upload.single('image'), async (req, res) => {
   try {
     const { name, category, price, description } = req.body;
+const priceValue = price && price.trim() !== '' ? parseFloat(price) : null;
     const id = req.params.id;
 
     // Update main item
     let sql = 'UPDATE items SET name=?, category=?, price=?, description=?';
-    const params = [name, category, price, description];
+    const params = [name, category, priceValue, description];
 
     if (req.file) {
       const imageData = req.file.buffer;
