@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
       col.className = 'col';
 
       col.innerHTML = `
-        <div class="card menu-card shadow-sm">
+        <div class="card menu-card shadow-sm" data-id="${item.id}">
 
           ${item.image_base64 ? `<img src="${item.image_base64}" class="menu-img">` : ''}
 
@@ -78,10 +78,9 @@ document.addEventListener('DOMContentLoaded', () => {
               <input type="number" class="form-control text-center qty-input" value="1" min="1">
               <button class="btn btn-outline-secondary qty-plus">+</button>
             </div>
-
-            <button class="btn btn-success btn-sm w-100 add-to-cart" data-id="${item.id}">
-              Add
-            </button>
+<div class="text-center small text-success fw-bold">
+  Tap + to add
+</div>
 
           </div>
         </div>
@@ -106,45 +105,44 @@ document.addEventListener('DOMContentLoaded', () => {
   categoryFilter.addEventListener('change', () =>
     searchInput.dispatchEvent(new Event('input'))
   );
+// ---------------- Card Qty + - (Instant Cart Update) ----------------
+document.addEventListener('click', e => {
 
+  const card = e.target.closest('.card');
+  if (!card) return;
 
-  // ---------------- Card Qty + - ----------------
-  document.addEventListener('click', e => {
+  const id = card.dataset.id;
+  const price = parseFloat(card.querySelector('.price-select').value);
 
-    if (e.target.classList.contains('qty-plus')) {
-      const input = e.target.parentElement.querySelector('.qty-input');
-      input.value++;
-    }
+  const item = allItems.find(i => i.id == id);
+  if (!item) return;
 
-    if (e.target.classList.contains('qty-minus')) {
-      const input = e.target.parentElement.querySelector('.qty-input');
-      if (input.value > 1) input.value--;
-    }
-  });
+  const key = id + '-' + price;
 
+  const existing = cart.find(c => c.key === key);
 
-  // ---------------- Add To Cart ----------------
-  document.addEventListener('click', e => {
+  // ➕ ADD instantly
+  if (e.target.classList.contains('qty-plus')) {
 
-    if (!e.target.classList.contains('add-to-cart')) return;
-
-    const card = e.target.closest('.card');
-
-    const id = e.target.dataset.id;
-    const price = parseFloat(card.querySelector('.price-select').value);
-    const qty = parseInt(card.querySelector('.qty-input').value);
-
-    const item = allItems.find(i => i.id == id);
-
-    const key = id + '-' + price;
-
-    const existing = cart.find(c => c.key === key);
-
-    if (existing) existing.qty += qty;
-    else cart.push({ key, name: item.name, price, qty });
+    if (existing) existing.qty++;
+    else cart.push({ key, name: item.name, price, qty: 1 });
 
     updateCartButton();
-  });
+  }
+
+  // ➖ REMOVE instantly
+  if (e.target.classList.contains('qty-minus')) {
+
+    if (!existing) return;
+
+    existing.qty--;
+
+    if (existing.qty <= 0)
+      cart = cart.filter(c => c.key !== key);
+
+    updateCartButton();
+  }
+});
 
 
   // ---------------- Cart Button ----------------
