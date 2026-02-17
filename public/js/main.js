@@ -62,7 +62,7 @@ function renderTable() {
         <td>${item.category}</td>
         <td>${item.price}</td>
         <td>${item.description || ''}</td>
-        <td>${item.image_path ? `<img src="${item.image_path}" width="50">` : ''}</td>
+        <td>${item.image_base64 ? `<img src="${item.image_base64}" width="50">` : ''}</td>
         <td>
           <button class="btn btn-sm btn-info me-2" onclick="openEditModal(${item.id})">Edit</button>
           <button class="btn btn-sm btn-danger" onclick="deleteItem(${item.id})">Delete</button>
@@ -80,6 +80,7 @@ function renderTable() {
   }
 }
 
+
 function gotoPage(page){
   currentPage = page;
   renderTable();
@@ -93,12 +94,13 @@ categoryFilter.addEventListener('change', renderTable);
 async function deleteItem(id){
   if(!confirm('Are you sure?')) return;
   const res = await fetch(`/api/items/${id}`, { method: 'DELETE' });
-  if(res.ok) fetchItems();
+  if(res.ok) fetchItems();  // Refresh the table after deletion
 }
+
 
 // ---------------- EDIT ----------------
 async function openEditModal(id){
-  const item = allItems.find(i => i.id===id);
+  const item = allItems.find(i => i.id === id);
   if(!item) return;
 
   document.getElementById('editId').value = item.id;
@@ -106,12 +108,13 @@ async function openEditModal(id){
   document.getElementById('editCategory').value = item.category;
   document.getElementById('editPrice').value = item.price;
   document.getElementById('editDescription').value = item.description || '';
-  currentImageDiv.innerHTML = item.image_path ? `<img src="${item.image_path}" width="100">` : '';
+  currentImageDiv.innerHTML = item.image_base64 ? `<img src="${item.image_base64}" width="100">` : '';
   
   editModal.show();
 }
 
-editItemForm.addEventListener('submit', async e=>{
+
+editItemForm.addEventListener('submit', async e => {
   e.preventDefault();
   const formData = new FormData(editItemForm);
   const id = document.getElementById('editId').value;
@@ -119,9 +122,12 @@ editItemForm.addEventListener('submit', async e=>{
   const res = await fetch(`/api/items/${id}`, { method: 'PUT', body: formData });
   if(res.ok){
     editModal.hide();
-    fetchItems();
-  } else alert('Failed to update item');
+    fetchItems();  // Refresh the table after editing
+  } else {
+    alert('Failed to update item');
+  }
 });
+
 
 // ---------------- INITIAL LOAD ----------------
 fetchItems();
