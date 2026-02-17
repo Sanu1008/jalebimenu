@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     allItems = data.map(i => ({
       ...i,
-      price: Number(i.price),
+      price: i.price !== null ? Number(i.price) : null,
       image_base64: i.image_base64 || ''
     }));
 
@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       let priceOptions = '';
 
-      if (item.price !== null) {
+      if (item.price !== null && item.price > 0) {
         priceOptions += `<option value="${item.price}">Regular - ${item.price.toFixed(3)} BHD</option>`;
       }
 
