@@ -43,31 +43,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---------------- Render items ----------------
   function renderItems(items) {
-    menuItemsDiv.innerHTML = '';
-    if (items.length === 0) {
-      menuItemsDiv.innerHTML = `<p class="text-center">No items found.</p>`;
-      return;
+  menuItemsDiv.innerHTML = '';
+
+  if (items.length === 0) {
+    menuItemsDiv.innerHTML = `<p class="text-center">No items found.</p>`;
+    return;
+  }
+
+  items.forEach(item => {
+
+    // price options (default + extra prices)
+    let priceOptions = '';
+
+    // default/base price
+    if (item.price !== null) {
+      priceOptions += `<option value="${item.price}">Regular - ${Number(item.price).toFixed(3)} BHD</option>`;
     }
 
-    items.forEach(item => {
-      const col = document.createElement('div');
-      col.className = 'col';
-      col.innerHTML = `
-        <div class="card menu-card shadow-sm">
-          ${item.image_base64 ? `<img src="${item.image_base64}" class="menu-img">` : ''}
-          <div class="card-body">
-            <h5 class="card-title mb-1">${item.name}</h5>
-            <p class="card-text mb-1">${item.description || ''}</p>
-            <p class="price mb-2">${item.price.toFixed(3)} BHD</p>
-            <button class="btn btn-success btn-sm w-100 add-to-cart" data-id="${item.id}">
-              Add to Cart
-            </button>
-          </div>
+    // extra prices
+    if (item.extra_prices && item.extra_prices.length) {
+      item.extra_prices.forEach(p => {
+        priceOptions += `<option value="${p.price}">${p.label} - ${Number(p.price).toFixed(3)} BHD</option>`;
+      });
+    }
+
+    const col = document.createElement('div');
+    col.className = 'col';
+
+    col.innerHTML = `
+      <div class="card menu-card shadow-sm">
+
+        ${item.image_base64 ? `<img src="${item.image_base64}" class="menu-img">` : ''}
+
+        <div class="card-body">
+
+          <h6 class="fw-bold mb-1">${item.name}</h6>
+          <small class="text-muted">${item.description || ''}</small>
+
+          <!-- price select -->
+          <select class="form-select form-select-sm my-2 price-select">
+            ${priceOptions}
+          </select>
+
+          <!-- quantity -->
+          <input type="number"
+                 class="form-control form-control-sm mb-2 qty-input"
+                 value="1" min="1">
+
+          <button
+            class="btn btn-success btn-sm w-100 add-to-cart"
+            data-id="${item.id}">
+            Add to Cart
+          </button>
+
         </div>
-      `;
-      menuItemsDiv.appendChild(col);
-    });
-  }
+      </div>
+    `;
+
+    menuItemsDiv.appendChild(col);
+  });
+}
+
 
   // ---------------- Search & Filter ----------------
   searchInput.addEventListener('input', () => {
@@ -85,21 +121,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---------------- Add to cart ----------------
   document.addEventListener('click', function (e) {
-    if (e.target.classList.contains('add-to-cart')) {
-      const id = e.target.dataset.id;
-      const item = allItems.find(i => i.id == id);
-      if (!item) return;
+  if (e.target.classList.contains('add-to-cart')) {
 
-      const existing = cart.find(c => c.id == id);
-      if (existing) {
-        existing.qty++;
-      } else {
-        cart.push({ ...item, qty: 1 });
-      }
+    const card = e.target.closest('.card');
 
-      updateCartButton();
+    const id = e.target.dataset.id;
+    const price = parseFloat(card.querySelector('.price-select').value);
+    const qty = parseInt(card.querySelector('.qty-input').value) || 1;
+
+    const item = allItems.find(i => i.id == id);
+    if (!item) return;
+
+    const key = id + '-' + price; // differentiate prices
+
+    const existing = cart.find(c => c.key === key);
+
+    if (existing) {
+      existing.qty += qty;
+    } else {
+      cart.push({
+        key,
+        id,
+        name: item.name,
+        price,
+        qty
+      });
     }
-  });
+
+    updateCartButton();
+  }
+});
+
 
   function updateCartButton() {
     const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
