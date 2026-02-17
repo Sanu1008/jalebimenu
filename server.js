@@ -64,21 +64,39 @@ app.get('/api/admin/logout', (req, res) => {
 });
 
 // Get all items and convert BLOB to Base64 string for frontend display
+// Get all items and convert BLOB (or hex) to Base64 for frontend display
 app.get('/api/items', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM items');
 
-    // Convert BLOB to Base64 string for frontend display
-    const items = rows.map(item => ({
-      ...item,
-      image_base64: item.image ? `data:image/jpeg;base64,${item.image.toString('base64')}` : '' // For JPEG images
-    }));
+    const items = rows.map(item => {
+      if (item.image) {
+        let imageBase64 = '';
+        
+        // If image data is stored as hexadecimal string (e.g., 0xFFD8FF...)
+        if (typeof item.image === 'string') {
+          const buffer = hexToBuffer(item.image);  // Convert hex to Buffer
+          imageBase64 = `data:image/jpeg;base64,${buffer.toString('base64')}`;
+        } else {
+          // If it's binary (BLOB) directly convert to Base64
+          imageBase64 = `data:image/jpeg;base64,${item.image.toString('base64')}`;
+        }
 
-    res.json(items);
+        return {
+          ...item,
+          image_base64: imageBase64
+        };
+      } else {
+        return item;
+      }
+    });
+
+    res.json(items);  // Return items with Base64 images
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 
 // Add new item with image
@@ -105,7 +123,11 @@ app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
   }
 });
 
-
+function hexToBuffer(hexString) {
+  // Remove the 0x prefix if it's present
+  const hex = hexString.replace(/^0x/, '');
+  return Buffer.from(hex, 'hex');
+}
 // Update item
 app.put('/api/items/:id', isAdmin, upload.single('image'), async (req, res) => {
   try {
