@@ -12,22 +12,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---------------- Fetch menu items ----------------
   async function fetchMenuItems() {
-  try {
-    const res = await fetch('/api/items');
-    if (!res.ok) throw new Error(`Failed to fetch items. Status: ${res.status}`);
-    const data = await res.json();
-    allItems = data.map(item => ({
-      ...item,
-      price: Number(item.price)  // convert price to number
-    }));
-    populateCategoryFilter();
-    renderItems(allItems);
-  } catch (err) {
-    menuItemsDiv.innerHTML = `<p class="text-danger">Unable to load menu. Please try later.</p>`;
-    console.error('Menu fetch error:', err);
+    try {
+      const res = await fetch('/api/items');
+      if (!res.ok) throw new Error(`Failed to fetch items. Status: ${res.status}`);
+      const data = await res.json();
+      allItems = data.map(item => ({
+        ...item,
+        price: Number(item.price),  // convert price to number
+        image_base64: item.image_base64 || '' // Ensure image is processed correctly
+      }));
+      populateCategoryFilter();
+      renderItems(allItems);
+    } catch (err) {
+      menuItemsDiv.innerHTML = `<p class="text-danger">Unable to load menu. Please try later.</p>`;
+      console.error('Menu fetch error:', err);
+    }
   }
-}
-
 
   // ---------------- Populate category filter ----------------
   function populateCategoryFilter() {
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
       col.className = 'col';
       col.innerHTML = `
         <div class="card menu-card shadow-sm">
-          ${item.image_path ? `<img src="${item.image_path}" class="menu-img">` : ''}
+          ${item.image_base64 ? `<img src="${item.image_base64}" class="menu-img">` : ''}
           <div class="card-body">
             <h5 class="card-title mb-1">${item.name}</h5>
             <p class="card-text mb-1">${item.description || ''}</p>
