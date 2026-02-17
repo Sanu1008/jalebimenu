@@ -1,4 +1,3 @@
-
 const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
@@ -15,11 +14,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({ secret: 'secret', resave: false, saveUninitialized: true }));
 
-// ---------------- Multer Setup ----------------
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'public/images/'),
-  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
-});
+// ---------------- Multer Setup (Memory Storage) ----------------
+const storage = multer.memoryStorage();  // Store file in memory instead of disk
 const upload = multer({ storage });
 
 // ---------------- Admin Setup ----------------
@@ -41,7 +37,7 @@ async function createTables() {
         category VARCHAR(100) NOT NULL,
         price DECIMAL(10,3) NOT NULL,
         description TEXT,
-        image_path TEXT
+        image LONGBLOB
       );
     `);
     console.log('✅ MySQL tables ready');
@@ -71,7 +67,14 @@ app.get('/api/admin/logout', (req, res) => {
 app.get('/api/items', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM items');
-    res.json(rows);
+
+    // Convert BLOB to Base64 string for frontend display
+    const items = rows.map(item => ({
+      ...item,
+      image_base64: item.image ? `data:image/jpeg;base64,${item.image.toString('base64')}` : ''
+    }));
+
+    res.json(items);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -81,11 +84,13 @@ app.get('/api/items', async (req, res) => {
 app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
   try {
     const { name, category, price, description } = req.body;
-    const image_path = req.file ? '/images/' + req.file.filename : '';
+    const imageData = req.file ? req.file.buffer : null;  // Get image as binary data (BLOB)
+
     await pool.query(
-      'INSERT INTO items (name, category, price, description, image_path) VALUES (?, ?, ?, ?, ?)',
-      [name, category, price, description, image_path]
+      'INSERT INTO items (name, category, price, description, image) VALUES (?, ?, ?, ?, ?)',
+      [name, category, price, description, imageData]
     );
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -99,13 +104,17 @@ app.put('/api/items/:id', isAdmin, upload.single('image'), async (req, res) => {
     const id = req.params.id;
     let sql = 'UPDATE items SET name=?, category=?, price=?, description=?';
     const params = [name, category, price, description];
+    
     if (req.file) {
-      sql += ', image_path=?';
-      params.push('/images/' + req.file.filename);
+      const imageData = req.file.buffer;  // Get image as binary data (BLOB)
+      sql += ', image=?';
+      params.push(imageData);
     }
+
     sql += ' WHERE id=?';
     params.push(id);
     await pool.query(sql, params);
+    
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
