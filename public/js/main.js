@@ -6,6 +6,28 @@ const pagination = document.getElementById('pagination');
 const editModal = new bootstrap.Modal(document.getElementById('editModal'));
 const editItemForm = document.getElementById('editItemForm');
 const currentImageDiv = document.getElementById('currentImage');
+// Multi-price elements
+const extraPricesList = document.getElementById('extraPricesList');
+const addExtraPriceBtn = document.getElementById('addExtraPriceBtn');
+
+// Function to add a new extra price row
+function addExtraPriceRow(label = '', price = '') {
+  const row = document.createElement('div');
+  row.className = 'd-flex gap-2 mb-1 extra-price-row';
+  row.innerHTML = `
+    <input type="text" class="form-control price-label" placeholder="Label" value="${label}">
+    <input type="number" class="form-control price-value" placeholder="Price" value="${price}" step="0.01">
+    <button type="button" class="btn btn-danger btn-sm remove-price-btn">&times;</button>
+  `;
+  extraPricesList.appendChild(row);
+
+  // Remove button
+  row.querySelector('.remove-price-btn').addEventListener('click', () => row.remove());
+}
+
+// Add new row on button click
+addExtraPriceBtn.addEventListener('click', () => addExtraPriceRow());
+
 
 let allItems = [];
 let currentPage = 1;
@@ -109,7 +131,11 @@ async function openEditModal(id){
   document.getElementById('editPrice').value = item.price;
   document.getElementById('editDescription').value = item.description || '';
   currentImageDiv.innerHTML = item.image_base64 ? `<img src="${item.image_base64}" width="100">` : '';
-  
+  // Clear previous extra prices
+extraPricesList.innerHTML = '';
+if (item.extra_prices && item.extra_prices.length > 0) {
+  item.extra_prices.forEach(p => addExtraPriceRow(p.label, p.price));
+}
   editModal.show();
 }
 
@@ -119,6 +145,19 @@ editItemForm.addEventListener('submit', async e => {
   const formData = new FormData(editItemForm);
   const id = document.getElementById('editId').value;
 
+  // ---------------- COLLECT EXTRA PRICES ----------------
+  const labels = document.querySelectorAll('#extraPricesList .price-label');
+  const values = document.querySelectorAll('#extraPricesList .price-value');
+
+  labels.forEach((input, idx) => {
+    const label = input.value.trim();
+    const price = values[idx].value.trim();
+    if(label && price) {
+      formData.append('labels', label);
+      formData.append('prices', price);
+    }
+  });
+
   const res = await fetch(`/api/items/${id}`, { method: 'PUT', body: formData });
   if(res.ok){
     editModal.hide();
@@ -127,6 +166,7 @@ editItemForm.addEventListener('submit', async e => {
     alert('Failed to update item');
   }
 });
+
 
 
 // ---------------- INITIAL LOAD ----------------

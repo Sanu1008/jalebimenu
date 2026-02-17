@@ -15,7 +15,7 @@ app.use(express.json());
 app.use(session({ secret: 'secret', resave: false, saveUninitialized: true }));
 
 // ---------------- Multer Setup (Memory Storage) ----------------
-const storage = multer.memoryStorage();  // Store file in memory instead of disk
+const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 // ---------------- Admin Setup ----------------
@@ -40,6 +40,18 @@ async function createTables() {
         image LONGBLOB
       );
     `);
+
+    // 🔥 NEW TABLE (multi price support)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS item_prices (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        item_id INT NOT NULL,
+        label VARCHAR(100) NOT NULL,
+        price DECIMAL(10,3) NOT NULL,
+        FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+      );
+    `);
+
     console.log('✅ MySQL tables ready');
   } catch (err) {
     console.error('❌ Table creation error:', err);
@@ -63,106 +75,142 @@ app.get('/api/admin/logout', (req, res) => {
   res.json({ success: true });
 });
 
-// Get all items and convert BLOB to Base64 string for frontend display
-// Get all items and convert BLOB to Base64 string for frontend display
+// ---------------- GET ITEMS ----------------
 app.get('/api/items', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM items');
 
-    const items = rows.map(item => {
+    const items = [];
+
+    for (let item of rows) {
+
+      // 🔥 Fetch extra prices
+      const [extraPrices] = await pool.query(
+        'SELECT id, label, price FROM item_prices WHERE item_id=?',
+        [item.id]
+      );
+
       let imageBase64 = '';
-      
+
       if (item.image) {
         let buffer = item.image;
-        
-        // Handle cases where DB returns hex string instead of buffer
+
         if (typeof item.image === 'string') {
-           const hex = item.image.replace(/^0x/, '');
-           buffer = Buffer.from(hex, 'hex');
+          const hex = item.image.replace(/^0x/, '');
+          buffer = Buffer.from(hex, 'hex');
         }
 
-        // Detect if PNG or JPEG (default to jpeg)
-        // PNG starts with hex 89 50 4E 47
-        const isPng = buffer.length > 3 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E;
-        const mimeType = isPng ? 'image/png' : 'image/jpeg';
+        const isPng =
+          buffer.length > 3 &&
+          buffer[0] === 0x89 &&
+          buffer[1] === 0x50 &&
+          buffer[2] === 0x4E;
 
+        const mimeType = isPng ? 'image/png' : 'image/jpeg';
         imageBase64 = `data:${mimeType};base64,${buffer.toString('base64')}`;
       }
 
-      // Create a new object WITHOUT the raw 'image' buffer to reduce response size
       const { image, ...rest } = item;
 
-      return {
+      items.push({
         ...rest,
-        image_base64: imageBase64
-      };
-    });
+        image_base64: imageBase64,
+        extra_prices: extraPrices   // 🔥 NEW FIELD
+      });
+    }
 
     res.json(items);
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-function hexToBuffer(hexString) {
-  // Remove the 0x prefix if it exists and convert to binary buffer
-  const hex = hexString.replace(/^0x/, '');
-  return Buffer.from(hex, 'hex');
-}
-
-
-
-
-// Add new item with image
+// ---------------- ADD ITEM ----------------
 app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
   try {
     const { name, category, price, description } = req.body;
-    
-    // Ensure the image is properly uploaded
-    if (!req.file) {
-      return res.status(400).json({ error: 'No image file uploaded.' });
-    }
+    const imageData = req.file ? req.file.buffer : null;
 
-    const imageData = req.file.buffer;  // Get image as binary data (BLOB)
-
-    // Insert item with image
-    await pool.query(
+    const [result] = await pool.query(
       'INSERT INTO items (name, category, price, description, image) VALUES (?, ?, ?, ?, ?)',
       [name, category, price, description, imageData]
     );
 
+    const itemId = result.insertId;
+
+    // 🔥 Insert extra prices if provided
+    if (req.body.labels && req.body.prices) {
+
+      const labels = Array.isArray(req.body.labels)
+        ? req.body.labels
+        : [req.body.labels];
+
+      const prices = Array.isArray(req.body.prices)
+        ? req.body.prices
+        : [req.body.prices];
+
+      for (let i = 0; i < labels.length; i++) {
+        if (labels[i] && prices[i]) {
+          await pool.query(
+            'INSERT INTO item_prices (item_id, label, price) VALUES (?, ?, ?)',
+            [itemId, labels[i], prices[i]]
+          );
+        }
+      }
+    }
+
     res.json({ success: true });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-
-// Update item
+// ---------------- UPDATE ITEM ----------------
 app.put('/api/items/:id', isAdmin, upload.single('image'), async (req, res) => {
   try {
     const { name, category, price, description } = req.body;
     const id = req.params.id;
-    let sql = 'UPDATE items SET name=?, category=?, price=?, description=?';
-    const params = [name, category, price, description];
-    
-    if (req.file) {
-      const imageData = req.file.buffer;  // Get image as binary data (BLOB)
+
+    // ---------------- HANDLE EXTRA PRICES ----------------
+    let labels = req.body.labels || [];
+    let values = req.body.prices || [];
+    let extra_prices = [];
+
+    // Ensure arrays
+    if(!Array.isArray(labels)) labels = [labels];
+    if(!Array.isArray(values)) values = [values];
+
+    for(let i=0; i<labels.length; i++){
+      if(labels[i] && values[i]){
+        extra_prices.push({ label: labels[i], price: parseFloat(values[i]) });
+      }
+    }
+
+    // ---------------- SQL UPDATE ----------------
+    let sql = 'UPDATE items SET name=?, category=?, price=?, description=?, extra_prices=?';
+    const params = [name, category, price, description, JSON.stringify(extra_prices)];
+
+    if(req.file){
+      const imageData = req.file.buffer;
       sql += ', image=?';
       params.push(imageData);
     }
 
     sql += ' WHERE id=?';
     params.push(id);
+
     await pool.query(sql, params);
-    
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Delete item
+
+// ---------------- DELETE ITEM ----------------
 app.delete('/api/items/:id', isAdmin, async (req, res) => {
   try {
     const id = req.params.id;
@@ -174,9 +222,19 @@ app.delete('/api/items/:id', isAdmin, async (req, res) => {
 });
 
 // ---------------- HTML Pages ----------------
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'html/admin.html')));
-app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'html/dashboard.html')));
-app.get('/menu', (req, res) => res.sendFile(path.join(__dirname, 'html/menu.html')));
+app.get('/', (req, res) =>
+  res.sendFile(path.join(__dirname, 'html/admin.html'))
+);
+
+app.get('/dashboard', (req, res) =>
+  res.sendFile(path.join(__dirname, 'html/dashboard.html'))
+);
+
+app.get('/menu', (req, res) =>
+  res.sendFile(path.join(__dirname, 'html/menu.html'))
+);
 
 // ---------------- Start Server ----------------
-app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+app.listen(PORT, () =>
+  console.log(`Server running at http://localhost:${PORT}`)
+);

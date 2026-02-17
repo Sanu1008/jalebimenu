@@ -48,29 +48,45 @@ async function fetchItems() {
   itemsTableBody.innerHTML = ''; // Clear table before adding items
 
   items.forEach(item => {
-  console.log(item.image_base64);  // Log Base64 string for each item
-  itemsTableBody.innerHTML += `
-    <tr>
-      <td>${item.id}</td>
-      <td>${item.name}</td>
-      <td>${item.category}</td>
-      <td>${item.price}</td>
-      <td>${item.description}</td>
-      <td>${item.image_base64 ? `<img src="${item.image_base64}" width="50">` : 'No image'}</td>
-      <td><button class="btn btn-sm btn-danger" onclick="deleteItem(${item.id})">Delete</button></td>
-    </tr>
-  `;
-});
+    console.log(item.image_base64);  // Log Base64 string for each item
 
+    // 🔥 Show main price + extra prices
+    let priceHTML = `${item.price}`;
+    if (item.extra_prices && item.extra_prices.length > 0) {
+      priceHTML += '<br><small>';
+      priceHTML += item.extra_prices.map(p => `${p.label}: ${p.price}`).join('<br>');
+      priceHTML += '</small>';
+    }
+
+    itemsTableBody.innerHTML += `
+      <tr>
+        <td>${item.id}</td>
+        <td>${item.name}</td>
+        <td>${item.category}</td>
+        <td>${priceHTML}</td>
+        <td>${item.description}</td>
+        <td>${item.image_base64 ? `<img src="${item.image_base64}" width="50">` : 'No image'}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteItem(${item.id})">Delete</button></td>
+      </tr>
+    `;
+  });
 }
-
-
-
 
 // ---------------- ADD ITEM ----------------
 addItemForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const formData = new FormData(addItemForm);
+
+  // 🔥 Add multiple prices to FormData
+  const priceLabels = document.querySelectorAll('.price-label');
+  const priceValues = document.querySelectorAll('.price-value');
+
+  priceLabels.forEach((input, idx) => {
+    if (input.value && priceValues[idx].value) {
+      formData.append('labels', input.value);
+      formData.append('prices', priceValues[idx].value);
+    }
+  });
 
   const res = await fetch('/api/items', {
     method: 'POST',
