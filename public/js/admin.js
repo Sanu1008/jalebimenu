@@ -51,12 +51,13 @@ async function fetchItems() {
         <td>${item.category}</td>
         <td>${item.price}</td>
         <td>${item.description}</td>
-        <td>${item.image ? `<img src="${item.image}" width="50">` : ''}</td>
+        <td>${item.image_base64 ? `<img src="${item.image_base64}" width="50">` : ''}</td>
         <td><button class="btn btn-sm btn-danger" onclick="deleteItem(${item.id})">Delete</button></td>
       </tr>
     `;
   });
 }
+
 
 
 // ---------------- ADD ITEM ----------------
