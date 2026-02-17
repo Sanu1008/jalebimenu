@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
   categoryFilter.addEventListener('change', () =>
     searchInput.dispatchEvent(new Event('input'))
   );
-// ---------------- Card Qty + - (Instant Cart Update) ----------------
+// ---------------- Card Qty + - (Instant Cart Update + textbox sync) ----------------
 document.addEventListener('click', e => {
 
   const card = e.target.closest('.card');
@@ -113,16 +113,18 @@ document.addEventListener('click', e => {
 
   const id = card.dataset.id;
   const price = parseFloat(card.querySelector('.price-select').value);
+  const input = card.querySelector('.qty-input');
 
   const item = allItems.find(i => i.id == id);
   if (!item) return;
 
   const key = id + '-' + price;
-
   const existing = cart.find(c => c.key === key);
 
-  // ➕ ADD instantly
+  // ➕ ADD
   if (e.target.classList.contains('qty-plus')) {
+
+    input.value = parseInt(input.value) + 1;   // ⭐ update textbox
 
     if (existing) existing.qty++;
     else cart.push({ key, name: item.name, price, qty: 1 });
@@ -130,8 +132,14 @@ document.addEventListener('click', e => {
     updateCartButton();
   }
 
-  // ➖ REMOVE instantly
+  // ➖ REMOVE
   if (e.target.classList.contains('qty-minus')) {
+
+    let current = parseInt(input.value);
+
+    if (current <= 0) return;
+
+    input.value = current - 1;   // ⭐ update textbox
 
     if (!existing) return;
 
@@ -143,6 +151,7 @@ document.addEventListener('click', e => {
     updateCartButton();
   }
 });
+
 
 
   // ---------------- Cart Button ----------------
