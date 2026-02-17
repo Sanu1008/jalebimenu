@@ -1,4 +1,7 @@
 // DOM elements
+// Multi-price elements
+const extraPricesList = document.getElementById('extraPricesList');
+const addExtraPriceBtn = document.getElementById('addExtraPriceBtn');
 const createItemForm = document.getElementById('createItemForm');
 const preview = document.getElementById('preview');
 const toastEl = document.getElementById('toast');
@@ -15,19 +18,48 @@ if (itemImage) {
     reader.readAsDataURL(file);
   });
 }
+function addExtraPriceRow(label = '', price = '') {
+  const row = document.createElement('div');
+  row.className = 'd-flex gap-2 mb-1 extra-price-row';
+  row.innerHTML = `
+    <input type="text" class="form-control price-label" placeholder="Label" value="${label}">
+    <input type="number" class="form-control price-value" placeholder="Price" value="${price}" step="0.01">
+    <button type="button" class="btn btn-danger btn-sm remove-price-btn">&times;</button>
+  `;
+  extraPricesList.appendChild(row);
+
+  // Remove button
+  row.querySelector('.remove-price-btn').addEventListener('click', () => row.remove());
+}
+
+// Add new row on button click
+addExtraPriceBtn.addEventListener('click', () => addExtraPriceRow());
 
 // Submit form
 if (createItemForm) {
   createItemForm.addEventListener('submit', async e => {
     e.preventDefault();
-    const formData = new FormData(createItemForm);
+  const formData = new FormData(createItemForm);
 
-    // ✅ Send session cookie with fetch
-    const res = await fetch('/api/items', {
-      method: 'POST',
-      body: formData,
-      credentials: 'include'
-    });
+  // ---------------- COLLECT EXTRA PRICES ----------------
+  const labels = document.querySelectorAll('#extraPricesList .price-label');
+  const values = document.querySelectorAll('#extraPricesList .price-value');
+
+  labels.forEach((input, idx) => {
+    const label = input.value.trim();
+    const price = values[idx].value.trim();
+    if(label && price){
+      formData.append('labels', label);
+      formData.append('prices', price);
+    }
+  });
+
+  // ✅ Send session cookie with fetch
+  const res = await fetch('/api/items', {
+    method: 'POST',
+    body: formData,
+    credentials: 'include'
+  });
 
     // Unauthorized check
     if(res.status === 401){

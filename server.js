@@ -41,7 +41,7 @@ async function createTables() {
       );
     `);
 
-    // 🔥 NEW TABLE (multi price support)
+    // Table for extra prices
     await pool.query(`
       CREATE TABLE IF NOT EXISTS item_prices (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -79,43 +79,32 @@ app.get('/api/admin/logout', (req, res) => {
 app.get('/api/items', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM items');
-
     const items = [];
 
     for (let item of rows) {
-
-      // 🔥 Fetch extra prices
+      // Fetch extra prices
       const [extraPrices] = await pool.query(
         'SELECT id, label, price FROM item_prices WHERE item_id=?',
         [item.id]
       );
 
       let imageBase64 = '';
-
       if (item.image) {
         let buffer = item.image;
-
         if (typeof item.image === 'string') {
           const hex = item.image.replace(/^0x/, '');
           buffer = Buffer.from(hex, 'hex');
         }
-
-        const isPng =
-          buffer.length > 3 &&
-          buffer[0] === 0x89 &&
-          buffer[1] === 0x50 &&
-          buffer[2] === 0x4E;
-
+        const isPng = buffer.length > 3 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E;
         const mimeType = isPng ? 'image/png' : 'image/jpeg';
         imageBase64 = `data:${mimeType};base64,${buffer.toString('base64')}`;
       }
 
       const { image, ...rest } = item;
-
       items.push({
         ...rest,
         image_base64: imageBase64,
-        extra_prices: extraPrices   // 🔥 NEW FIELD
+        extra_prices: extraPrices // new field
       });
     }
 
@@ -139,16 +128,10 @@ app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
 
     const itemId = result.insertId;
 
-    // 🔥 Insert extra prices if provided
+    // Insert extra prices
     if (req.body.labels && req.body.prices) {
-
-      const labels = Array.isArray(req.body.labels)
-        ? req.body.labels
-        : [req.body.labels];
-
-      const prices = Array.isArray(req.body.prices)
-        ? req.body.prices
-        : [req.body.prices];
+      const labels = Array.isArray(req.body.labels) ? req.body.labels : [req.body.labels];
+      const prices = Array.isArray(req.body.prices) ? req.body.prices : [req.body.prices];
 
       for (let i = 0; i < labels.length; i++) {
         if (labels[i] && prices[i]) {
@@ -161,7 +144,6 @@ app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
     }
 
     res.json({ success: true });
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -173,42 +155,43 @@ app.put('/api/items/:id', isAdmin, upload.single('image'), async (req, res) => {
     const { name, category, price, description } = req.body;
     const id = req.params.id;
 
-    // ---------------- HANDLE EXTRA PRICES ----------------
-    let labels = req.body.labels || [];
-    let values = req.body.prices || [];
-    let extra_prices = [];
+    // Update main item
+    let sql = 'UPDATE items SET name=?, category=?, price=?, description=?';
+    const params = [name, category, price, description];
 
-    // Ensure arrays
-    if(!Array.isArray(labels)) labels = [labels];
-    if(!Array.isArray(values)) values = [values];
-
-    for(let i=0; i<labels.length; i++){
-      if(labels[i] && values[i]){
-        extra_prices.push({ label: labels[i], price: parseFloat(values[i]) });
-      }
-    }
-
-    // ---------------- SQL UPDATE ----------------
-    let sql = 'UPDATE items SET name=?, category=?, price=?, description=?, extra_prices=?';
-    const params = [name, category, price, description, JSON.stringify(extra_prices)];
-
-    if(req.file){
+    if (req.file) {
       const imageData = req.file.buffer;
       sql += ', image=?';
       params.push(imageData);
     }
-
     sql += ' WHERE id=?';
     params.push(id);
-
     await pool.query(sql, params);
+
+    // Clear previous extra prices
+    await pool.query('DELETE FROM item_prices WHERE item_id=?', [id]);
+
+    // Insert new extra prices
+    let labels = req.body.labels || [];
+    let values = req.body.prices || [];
+
+    if (!Array.isArray(labels)) labels = [labels];
+    if (!Array.isArray(values)) values = [values];
+
+    for (let i = 0; i < labels.length; i++) {
+      if (labels[i] && values[i]) {
+        await pool.query(
+          'INSERT INTO item_prices (item_id, label, price) VALUES (?, ?, ?)',
+          [id, labels[i], values[i]]
+        );
+      }
+    }
 
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 // ---------------- DELETE ITEM ----------------
 app.delete('/api/items/:id', isAdmin, async (req, res) => {
@@ -225,11 +208,9 @@ app.delete('/api/items/:id', isAdmin, async (req, res) => {
 app.get('/', (req, res) =>
   res.sendFile(path.join(__dirname, 'html/admin.html'))
 );
-
 app.get('/dashboard', (req, res) =>
   res.sendFile(path.join(__dirname, 'html/dashboard.html'))
 );
-
 app.get('/menu', (req, res) =>
   res.sendFile(path.join(__dirname, 'html/menu.html'))
 );
