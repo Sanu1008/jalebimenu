@@ -46,18 +46,20 @@ async function fetchItems() {
   itemsTableBody.innerHTML = ''; // Clear table before adding items
 
   items.forEach(item => {
-    itemsTableBody.innerHTML += `
-      <tr>
-        <td>${item.id}</td>
-        <td>${item.name}</td>
-        <td>${item.category}</td>
-        <td>${item.price}</td>
-        <td>${item.description}</td>
-        <td>${item.image_base64 ? `<img src="${item.image_base64}" width="50">` : 'No image'}</td>
-        <td><button class="btn btn-sm btn-danger" onclick="deleteItem(${item.id})">Delete</button></td>
-      </tr>
-    `;
-  });
+  console.log(item.image_base64);  // Log Base64 string for each item
+  itemsTableBody.innerHTML += `
+    <tr>
+      <td>${item.id}</td>
+      <td>${item.name}</td>
+      <td>${item.category}</td>
+      <td>${item.price}</td>
+      <td>${item.description}</td>
+      <td>${item.image_base64 ? `<img src="${item.image_base64}" width="50">` : 'No image'}</td>
+      <td><button class="btn btn-sm btn-danger" onclick="deleteItem(${item.id})">Delete</button></td>
+    </tr>
+  `;
+});
+
 }
 
 
