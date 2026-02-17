@@ -1,11 +1,11 @@
 // DOM elements
-// Multi-price elements
 const extraPricesList = document.getElementById('extraPricesList');
 const addExtraPriceBtn = document.getElementById('addExtraPriceBtn');
 const createItemForm = document.getElementById('createItemForm');
 const preview = document.getElementById('preview');
 const toastEl = document.getElementById('toast');
 const toast = toastEl ? new bootstrap.Toast(toastEl) : null;
+const mainPriceInput = createItemForm ? createItemForm.querySelector('input[name="price"]') : null;
 
 // Preview selected image
 const itemImage = document.getElementById('itemImage');
@@ -18,6 +18,8 @@ if (itemImage) {
     reader.readAsDataURL(file);
   });
 }
+
+// Function to add extra price row
 function addExtraPriceRow(label = '', price = '') {
   const row = document.createElement('div');
   row.className = 'd-flex gap-2 mb-1 extra-price-row';
@@ -35,33 +37,47 @@ function addExtraPriceRow(label = '', price = '') {
 // Add new row on button click
 addExtraPriceBtn.addEventListener('click', () => addExtraPriceRow());
 
-// Submit form
+// ------------------ Submit Form ------------------
 if (createItemForm) {
   createItemForm.addEventListener('submit', async e => {
     e.preventDefault();
-  const formData = new FormData(createItemForm);
 
-  // ---------------- COLLECT EXTRA PRICES ----------------
-  const labels = document.querySelectorAll('#extraPricesList .price-label');
-  const values = document.querySelectorAll('#extraPricesList .price-value');
+    // ---------------- VALIDATION ----------------
+    const labels = document.querySelectorAll('#extraPricesList .price-label');
+    const values = document.querySelectorAll('#extraPricesList .price-value');
+    let hasExtraPrice = false;
 
-  labels.forEach((input, idx) => {
-    const label = input.value.trim();
-    const price = values[idx].value.trim();
-    if(label && price){
-      formData.append('labels', label);
-      formData.append('prices', price);
+    labels.forEach((input, idx) => {
+      const label = input.value.trim();
+      const price = values[idx].value.trim();
+      if (label && price) hasExtraPrice = true;
+    });
+
+    // If no extra price and no main price -> show alert
+    if (!hasExtraPrice && (!mainPriceInput.value || mainPriceInput.value.trim() === '')) {
+      alert('Please enter at least a main price or one extra price.');
+      return;
     }
-  });
 
-  // ✅ Send session cookie with fetch
-  const res = await fetch('/api/items', {
-    method: 'POST',
-    body: formData,
-    credentials: 'include'
-  });
+    const formData = new FormData(createItemForm);
 
-    // Unauthorized check
+    // Append extra prices
+    labels.forEach((input, idx) => {
+      const label = input.value.trim();
+      const price = values[idx].value.trim();
+      if(label && price){
+        formData.append('labels', label);
+        formData.append('prices', price);
+      }
+    });
+
+    // Send request
+    const res = await fetch('/api/items', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include'
+    });
+
     if(res.status === 401){
       alert('Unauthorized! Please login first');
       window.location.href = '/';
@@ -78,8 +94,8 @@ if (createItemForm) {
 
       createItemForm.reset();
       preview.innerHTML = '';
+      extraPricesList.innerHTML = '';
 
-      // Redirect after 1.5 seconds
       setTimeout(() => window.location.href='/dashboard', 1500);
     } else {
       if(toastEl && toast){
