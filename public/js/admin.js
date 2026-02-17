@@ -44,18 +44,18 @@ async function fetchItems() {
   const items = await res.json();
   itemsTableBody.innerHTML = '';
   items.forEach(item => {
-    itemsTableBody.innerHTML += `
-      <tr>
-        <td>${item.id}</td>
-        <td>${item.name}</td>
-        <td>${item.category}</td>
-        <td>${item.price}</td>
-        <td>${item.description}</td>
-        <td>${item.image_base64 ? `<img src="${item.image_base64}" width="50">` : ''}</td>
-        <td><button class="btn btn-sm btn-danger" onclick="deleteItem(${item.id})">Delete</button></td>
-      </tr>
-    `;
-  });
+  itemsTableBody.innerHTML += `
+    <tr>
+      <td>${item.id}</td>
+      <td>${item.name}</td>
+      <td>${item.category}</td>
+      <td>${item.price}</td>
+      <td>${item.description}</td>
+      <td>${item.image_base64 ? `<img src="${item.image_base64}" width="50">` : ''}</td>
+      <td><button class="btn btn-sm btn-danger" onclick="deleteItem(${item.id})">Delete</button></td>
+    </tr>
+  `;
+});
 }
 
 

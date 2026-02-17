@@ -63,7 +63,7 @@ app.get('/api/admin/logout', (req, res) => {
   res.json({ success: true });
 });
 
-// Get all items
+// Get all items and convert BLOB to Base64 string for frontend display
 app.get('/api/items', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM items');
@@ -71,7 +71,7 @@ app.get('/api/items', async (req, res) => {
     // Convert BLOB to Base64 string for frontend display
     const items = rows.map(item => ({
       ...item,
-      image_base64: item.image ? `data:image/jpeg;base64,${item.image.toString('base64')}` : ''
+      image_base64: item.image ? `data:image/jpeg;base64,${item.image.toString('base64')}` : '' // For JPEG images
     }));
 
     res.json(items);
@@ -80,12 +80,20 @@ app.get('/api/items', async (req, res) => {
   }
 });
 
-// Add new item
+
+// Add new item with image
 app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
   try {
     const { name, category, price, description } = req.body;
-    const imageData = req.file ? req.file.buffer : null;  // Get image as binary data (BLOB)
+    
+    // Ensure the image is properly uploaded
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file uploaded.' });
+    }
 
+    const imageData = req.file.buffer;  // Get image as binary data (BLOB)
+
+    // Insert item with image
     await pool.query(
       'INSERT INTO items (name, category, price, description, image) VALUES (?, ?, ?, ?, ?)',
       [name, category, price, description, imageData]
@@ -96,6 +104,7 @@ app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // Update item
 app.put('/api/items/:id', isAdmin, upload.single('image'), async (req, res) => {
