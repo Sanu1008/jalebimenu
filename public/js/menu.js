@@ -283,16 +283,16 @@ function updateCartButton() {
     msg += `\n`;
   }
 
+  // Monospace table using triple backticks
   msg += "🛒 *Order Items*\n";
-
-  // Fixed column widths
-  const itemColWidth = 20; // max width for item names
+  msg += "```";
+  
+  const itemColWidth = 20;
   const qtyColWidth = 3;
   const priceColWidth = 6;
   const totalColWidth = 6;
 
-  // Header
-  msg += `Item${' '.repeat(itemColWidth - 4)}  Qty  Price  Total\n`;
+  msg += `Item${' '.repeat(itemColWidth - 4)} Qty  Price  Total\n`;
   msg += '-'.repeat(itemColWidth + qtyColWidth + priceColWidth + totalColWidth + 6) + '\n';
 
   let grandTotal = 0;
@@ -309,11 +309,13 @@ function updateCartButton() {
     const priceCol = i.price.toFixed(3).padStart(priceColWidth, ' ');
     const totalCol = itemTotal.toFixed(3).padStart(totalColWidth, ' ');
 
-    msg += `${itemCol}  ${qtyCol}  ${priceCol}  ${totalCol}\n`;
+    msg += `${itemCol} ${qtyCol} ${priceCol} ${totalCol}\n`;
   });
 
   msg += '-'.repeat(itemColWidth + qtyColWidth + priceColWidth + totalColWidth + 6) + '\n';
-  msg += `💰 *Grand Total:* ${grandTotal.toFixed(3)} BHD\n`;
+  msg += `Grand Total:${' '.repeat(3)}${grandTotal.toFixed(3)} BHD\n`;
+  msg += "```"; // end monospace
+
   msg += "\n📌 Please process this order promptly.";
 
   return msg;
