@@ -65,11 +65,13 @@ function renderItems(items) {
   items.forEach(item => {
     let priceOptions = '';
     if (item.price !== null && item.price > 0) {
-      priceOptions += `<option value="${item.price}">Regular - ${item.price.toFixed(3)} BHD</option>`;
+      const priceWithVAT = item.vatEnabled ? (item.price * 1.05).toFixed(3) : item.price.toFixed(3); // 5% VAT
+      priceOptions += `<option value="${item.price}">Regular - ${priceWithVAT} BHD ${item.vatEnabled ? '(VAT)' : ''}</option>`;
     }
     if (item.extra_prices) {
       item.extra_prices.forEach(p => {
-        priceOptions += `<option value="${p.price}">${p.label} - ${Number(p.price).toFixed(3)} BHD</option>`;
+        const priceWithVAT = item.vatEnabled ? (p.price * 1.05).toFixed(3) : p.price.toFixed(3);
+        priceOptions += `<option value="${p.price}">${p.label} - ${priceWithVAT} BHD ${item.vatEnabled ? '(VAT)' : ''}</option>`;
       });
     }
 
@@ -94,9 +96,93 @@ function renderItems(items) {
         </div>
       </div>
     `;
-
     menuItemsDiv.appendChild(col);
   });
+}
+
+// ---------------- Update Cart Modal ----------------
+function renderCartModal() {
+  cartItemsDiv.innerHTML = '';
+  let total = 0;
+  cart.forEach((item, index) => {
+    const itemObj = allItems.find(i => i.id == item.key.split('-')[0]);
+    const vatEnabled = itemObj?.vatEnabled;
+    const itemPrice = vatEnabled ? item.price * 1.05 : item.price; // Apply 5% VAT if enabled
+    const itemTotal = itemPrice * item.qty;
+    total += itemTotal;
+
+    cartItemsDiv.innerHTML += `
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+          <b>${item.name}${item.variant ? ' (' + item.variant + ')' : ''}</b><br>
+          <small>${itemPrice.toFixed(3)} BHD${vatEnabled ? ' (VAT)' : ''}</small>
+        </div>
+        <div>
+          <button class="btn btn-sm btn-outline-secondary cart-minus" data-i="${index}">-</button>
+          <span class="mx-2">${item.qty}</span>
+          <button class="btn btn-sm btn-outline-secondary cart-plus" data-i="${index}">+</button>
+          <button class="btn btn-sm btn-danger ms-2 cart-remove" data-i="${index}">✕</button>
+        </div>
+      </div>
+    `;
+  });
+  cartTotalSpan.textContent = total.toFixed(3);
+}
+
+// ---------------- WhatsApp Receipt ----------------
+function generateWhatsAppReceipt(orderType, cart, customer = {}) {
+  let msg = "🛍️ *New Customer Order*\n\n";
+
+  if (orderType === 'dining') {
+    const table = customer.tableNo || '-';
+    const persons = customer.personsCount || '-';
+    msg += `🍽️ *Dining*\nTable: ${table} | Persons: ${persons}\n\n`;
+  } else if (orderType === 'delivery') {
+    const name = customer.name || '-';
+    const mobile = customer.mobile || '-';
+    const address = customer.address || '-';
+    const lat = customer.lat || '';
+    const lng = customer.lng || '';
+
+    msg += `🚚 *Delivery*\n*Name:* ${name}\n*Mobile:* ${mobile}\n*Address:* ${address}\n`;
+    if (lat && lng) msg += `📍 Map: https://maps.google.com/?q=${lat},${lng}\n`;
+    msg += `\n`;
+  }
+
+  msg += "🛒 *Order Items*\n```";
+  const itemColWidth = 20;
+  const qtyColWidth = 3;
+  const priceColWidth = 6;
+  const totalColWidth = 6;
+
+  msg += `Item${' '.repeat(itemColWidth - 4)} Qty  Price  Total\n`;
+  msg += '-'.repeat(itemColWidth + qtyColWidth + priceColWidth + totalColWidth + 6) + '\n';
+
+  let grandTotal = 0;
+  cart.forEach(i => {
+    const itemObj = allItems.find(it => it.id == i.key.split('-')[0]);
+    const vatEnabled = itemObj?.vatEnabled;
+    const price = vatEnabled ? i.price * 1.05 : i.price;
+    const itemTotal = price * i.qty;
+    grandTotal += itemTotal;
+
+    let name = i.name;
+    if (i.variant) name += ` (${i.variant})`;
+    if (name.length > itemColWidth) name = name.substring(0, itemColWidth - 3) + '...';
+
+    const itemCol = name.padEnd(itemColWidth, ' ');
+    const qtyCol = i.qty.toString().padStart(qtyColWidth, ' ');
+    const priceCol = price.toFixed(3).padStart(priceColWidth, ' ');
+    const totalCol = itemTotal.toFixed(3).padStart(totalColWidth, ' ');
+
+    msg += `${itemCol} ${qtyCol} ${priceCol} ${totalCol}\n`;
+  });
+
+  msg += '-'.repeat(itemColWidth + qtyColWidth + priceColWidth + totalColWidth + 6) + '\n```';
+  msg += `\n💰 *Grand Total: ${grandTotal.toFixed(3)} BHD*\n`;
+  msg += "\n📌 Please process this order promptly.";
+
+  return msg;
 }
 
 // ---------------- Update Variant Display ----------------

@@ -82,7 +82,6 @@ app.get('/api/items', async (req, res) => {
     const items = [];
 
     for (let item of rows) {
-      // Fetch extra prices
       const [extraPrices] = await pool.query(
         'SELECT id, label, price FROM item_prices WHERE item_id=?',
         [item.id]
@@ -104,7 +103,8 @@ app.get('/api/items', async (req, res) => {
       items.push({
         ...rest,
         image_base64: imageBase64,
-        extra_prices: extraPrices // new field
+        extra_prices: extraPrices,
+        vat_enabled: item.vat_enabled === 1 // boolean for frontend
       });
     }
 
@@ -115,18 +115,19 @@ app.get('/api/items', async (req, res) => {
   }
 });
 
+
 // ---------------- ADD ITEM ----------------
 app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
   try {
-    const { name, category, price, description } = req.body;
+    const { name, category, price, description, vatEnabled } = req.body;
 
-// Convert empty string to NULL
-const priceValue = price && price.trim() !== '' ? parseFloat(price) : null;
+    const priceValue = price && price.trim() !== '' ? parseFloat(price) : null;
+    const vatValue = vatEnabled === '1' ? 1 : 0;
     const imageData = req.file ? req.file.buffer : null;
 
     const [result] = await pool.query(
-      'INSERT INTO items (name, category, price, description, image) VALUES (?, ?, ?, ?, ?)',
-      [name, category, priceValue, description, imageData]
+      'INSERT INTO items (name, category, price, description, image, vat_enabled) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, category, priceValue, description, imageData, vatValue]
     );
 
     const itemId = result.insertId;
@@ -155,19 +156,22 @@ const priceValue = price && price.trim() !== '' ? parseFloat(price) : null;
 // ---------------- UPDATE ITEM ----------------
 app.put('/api/items/:id', isAdmin, upload.single('image'), async (req, res) => {
   try {
-    const { name, category, price, description } = req.body;
-const priceValue = price && price.trim() !== '' ? parseFloat(price) : null;
+    const { name, category, price, description, vatEnabled } = req.body;
+
+    const priceValue = price && price.trim() !== '' ? parseFloat(price) : null;
+    const vatValue = vatEnabled === '1' ? 1 : 0;
     const id = req.params.id;
 
     // Update main item
-    let sql = 'UPDATE items SET name=?, category=?, price=?, description=?';
-    const params = [name, category, priceValue, description];
+    let sql = 'UPDATE items SET name=?, category=?, price=?, description=?, vat_enabled=?';
+    const params = [name, category, priceValue, description, vatValue];
 
     if (req.file) {
       const imageData = req.file.buffer;
       sql += ', image=?';
       params.push(imageData);
     }
+
     sql += ' WHERE id=?';
     params.push(id);
     await pool.query(sql, params);
@@ -196,6 +200,7 @@ const priceValue = price && price.trim() !== '' ? parseFloat(price) : null;
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // ---------------- DELETE ITEM ----------------
 app.delete('/api/items/:id', isAdmin, async (req, res) => {
