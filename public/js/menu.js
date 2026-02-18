@@ -265,51 +265,58 @@ function updateCartButton() {
 
   // ---------------- WhatsApp Receipt ----------------
   function generateWhatsAppReceipt(orderType, cart, customer = {}) {
-    let msg = "🛍️ *New Customer Order*\n\n";
+  let msg = "🛍️ *New Customer Order*\n\n";
 
-    // ===== Order Type =====
-    if (orderType === 'dining') {
-      const table = customer.tableNo || '-';
-      const persons = customer.personsCount || '-';
-      msg += `🍽️ *Dining*\nTable: ${table} | Persons: ${persons}\n\n`;
-    } else if (orderType === 'delivery') {
-      const name = customer.name || '-';
-      const mobile = customer.mobile || '-';
-      const address = customer.address || '-';
-      const lat = customer.lat || '';
-      const lng = customer.lng || '';
+  // ===== Order Type =====
+  if (orderType === 'dining') {
+    const table = customer.tableNo || '-';
+    const persons = customer.personsCount || '-';
+    msg += `🍽️ *Dining*\nTable: ${table} | Persons: ${persons}\n\n`;
+  } else if (orderType === 'delivery') {
+    const name = customer.name || '-';
+    const mobile = customer.mobile || '-';
+    const address = customer.address || '-';
+    const lat = customer.lat || '';
+    const lng = customer.lng || '';
 
-      msg += `🚚 *Delivery*\n*Name:* ${name}\n*Mobile:* ${mobile}\n*Address:* ${address}\n`;
-      if (lat && lng) msg += `📍 Map: https://maps.google.com/?q=${lat},${lng}\n`;
-      msg += `\n`;
-    }
-
-    // ===== Items =====
-    msg += "🛒 *Order Items*\n";
-    msg += "Item                     Qty   Price   Total\n";
-    msg += "-----------------------------------------\n";
-
-    let grandTotal = 0;
-    cart.forEach(i => {
-      const itemTotal = i.price * i.qty;
-      grandTotal += itemTotal;
-
-      let name = i.name;
-      if (i.variant) name += ` (${i.variant})`;
-
-      let qty = i.qty.toString().padStart(3, ' ');
-      let price = i.price.toFixed(3).padStart(6, ' ');
-      let total = itemTotal.toFixed(3).padStart(6, ' ');
-
-      msg += `${name.padEnd(23, ' ')}${qty} ${price} ${total}\n`;
-    });
-
-    msg += "-----------------------------------------\n";
-    msg += `💰 *Grand Total:* ${grandTotal.toFixed(3)} BHD\n`;
-    msg += "\n📌 Please process this order promptly.";
-
-    return msg;
+    msg += `🚚 *Delivery*\n*Name:* ${name}\n*Mobile:* ${mobile}\n*Address:* ${address}\n`;
+    if (lat && lng) msg += `📍 Map: https://maps.google.com/?q=${lat},${lng}\n`;
+    msg += `\n`;
   }
+
+  // ===== Items =====
+  msg += "🛒 *Order Items*\n";
+  msg += "Item                      Qty  Price   Total\n";
+  msg += "-------------------------------------------\n";
+
+  let grandTotal = 0;
+  cart.forEach(i => {
+    const itemTotal = i.price * i.qty;
+    grandTotal += itemTotal;
+
+    let name = i.name;
+    if (i.variant) name += ` (${i.variant})`;
+
+    // truncate long item names
+    if (name.length > 22) name = name.substring(0, 19) + '...';
+
+    // Columns
+    const itemCol = name.padEnd(24, ' ');
+    const qtyStr = i.qty.toString();
+    const qtyCol = qtyStr.padStart(Math.floor((3 + qtyStr.length)/2), ' ').padEnd(3, ' '); // visually centered
+    const priceCol = i.price.toFixed(3).padStart(6, ' ');
+    const totalCol = itemTotal.toFixed(3).padStart(6, ' ');
+
+    msg += `${itemCol}${qtyCol}${priceCol}${totalCol}\n`;
+  });
+
+  msg += "-------------------------------------------\n";
+  msg += `💰 *Grand Total:* ${grandTotal.toFixed(3)} BHD\n`;
+  msg += "\n📌 Please process this order promptly.";
+
+  return msg;
+}
+
 
   // ================= GPS / AUTO DETECT ADDRESS =================
   autoAddressBtn?.addEventListener('click', () => {
