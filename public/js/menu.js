@@ -267,7 +267,6 @@ function updateCartButton() {
   function generateWhatsAppReceipt(orderType, cart, customer = {}) {
   let msg = "🛍️ *New Customer Order*\n\n";
 
-  // ===== Order Type =====
   if (orderType === 'dining') {
     const table = customer.tableNo || '-';
     const persons = customer.personsCount || '-';
@@ -284,21 +283,17 @@ function updateCartButton() {
     msg += `\n`;
   }
 
-  // ===== Items =====
   msg += "🛒 *Order Items*\n";
 
-  // Determine dynamic widths
-  const nameWidth = Math.max(...cart.map(i => {
-    let name = i.name;
-    if (i.variant) name += ` (${i.variant})`;
-    return name.length;
-  }), 4); // minimum width 4
-  const qtyWidth = 3;
-  const priceWidth = 6;
-  const totalWidth = 6;
+  // Fixed column widths
+  const itemColWidth = 20; // max width for item names
+  const qtyColWidth = 3;
+  const priceColWidth = 6;
+  const totalColWidth = 6;
 
-  msg += `Item${' '.repeat(nameWidth - 4)}  Qty  Price  Total\n`;
-  msg += '-'.repeat(nameWidth + qtyWidth + priceWidth + totalWidth + 6) + '\n';
+  // Header
+  msg += `Item${' '.repeat(itemColWidth - 4)}  Qty  Price  Total\n`;
+  msg += '-'.repeat(itemColWidth + qtyColWidth + priceColWidth + totalColWidth + 6) + '\n';
 
   let grandTotal = 0;
   cart.forEach(i => {
@@ -307,17 +302,17 @@ function updateCartButton() {
 
     let name = i.name;
     if (i.variant) name += ` (${i.variant})`;
-    if (name.length > nameWidth) name = name.substring(0, nameWidth - 3) + '...';
+    if (name.length > itemColWidth) name = name.substring(0, itemColWidth - 3) + '...';
 
-    const itemCol = name.padEnd(nameWidth, ' ');
-    const qtyCol = i.qty.toString().padStart(Math.floor((qtyWidth + i.qty.toString().length)/2), ' ').padEnd(qtyWidth, ' ');
-    const priceCol = i.price.toFixed(3).padStart(priceWidth, ' ');
-    const totalCol = itemTotal.toFixed(3).padStart(totalWidth, ' ');
+    const itemCol = name.padEnd(itemColWidth, ' ');
+    const qtyCol = i.qty.toString().padStart(qtyColWidth, ' ');
+    const priceCol = i.price.toFixed(3).padStart(priceColWidth, ' ');
+    const totalCol = itemTotal.toFixed(3).padStart(totalColWidth, ' ');
 
     msg += `${itemCol}  ${qtyCol}  ${priceCol}  ${totalCol}\n`;
   });
 
-  msg += '-'.repeat(nameWidth + qtyWidth + priceWidth + totalWidth + 6) + '\n';
+  msg += '-'.repeat(itemColWidth + qtyColWidth + priceColWidth + totalColWidth + 6) + '\n';
   msg += `💰 *Grand Total:* ${grandTotal.toFixed(3)} BHD\n`;
   msg += "\n📌 Please process this order promptly.";
 
