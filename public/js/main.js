@@ -141,6 +141,9 @@ async function openEditModal(id){
   document.getElementById('editCategory').value = item.category;
   document.getElementById('editPrice').value = item.price;
   document.getElementById('editDescription').value = item.description || '';
+  // Pre-fill VAT checkbox
+const vatCheckbox = document.getElementById('editVatEnabled');
+vatCheckbox.checked = item.vat_enabled === 1; // assumes backend sends 0 or 1
   currentImageDiv.innerHTML = item.image_base64 ? `<img src="${item.image_base64}" width="100">` : '';
   // Clear previous extra prices
 extraPricesList.innerHTML = '';
