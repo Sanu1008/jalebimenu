@@ -225,7 +225,19 @@ function updateCartButton() {
   // ---------------- WhatsApp Send ----------------
   sendOrderBtn.addEventListener('click', () => {
     if (!cart.length) return;
-
+// ================= VALIDATION =================
+  if (orderType.value === 'dining') {
+    if (!tableNo.value.trim() || !personsCount.value.trim()) {
+      alert("Please enter Table No and Number of Persons for Dining orders.");
+      return; // stop sending
+    }
+  }
+  if (orderType.value === 'delivery') {
+    if (!custName.value.trim() || !custMobile.value.trim() || !custAddress.value.trim()) {
+      alert("Please fill Customer Name, Mobile, and Address for Delivery orders.");
+      return;
+    }
+  }
     const customerData = {
       tableNo: tableNo.value,
       personsCount: personsCount.value,
@@ -313,9 +325,10 @@ function updateCartButton() {
   });
 
   msg += '-'.repeat(itemColWidth + qtyColWidth + priceColWidth + totalColWidth + 6) + '\n';
-  msg += `Grand Total:${' '.repeat(3)}${grandTotal.toFixed(3)} BHD\n`;
   msg += "```"; // end monospace
 
+  // Bold Grand Total outside code block
+  msg += `\n💰 *Grand Total: ${grandTotal.toFixed(3)} BHD*\n`;
   msg += "\n📌 Please process this order promptly.";
 
   return msg;
