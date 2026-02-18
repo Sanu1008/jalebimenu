@@ -30,6 +30,7 @@ function isAdmin(req, res, next) {
 // ---------------- Create Tables ----------------
 async function createTables() {
   try {
+    // Items table with VAT column added
     await pool.query(`
       CREATE TABLE IF NOT EXISTS items (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -37,7 +38,8 @@ async function createTables() {
         category VARCHAR(100) NOT NULL,
         price DECIMAL(10,3) NULL,
         description TEXT,
-        image LONGBLOB
+        image LONGBLOB,
+        vat_enabled TINYINT(1) DEFAULT 0
       );
     `);
 
@@ -199,7 +201,6 @@ app.put('/api/items/:id', isAdmin, upload.single('image'), async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 // ---------------- DELETE ITEM ----------------
 app.delete('/api/items/:id', isAdmin, async (req, res) => {
