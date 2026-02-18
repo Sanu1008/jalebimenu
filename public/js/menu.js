@@ -59,44 +59,56 @@ document.addEventListener('DOMContentLoaded', () => {
       .forEach(c => categoryFilter.innerHTML += `<option>${c}</option>`);
   }
 
-  // ---------------- Render Items ----------------
-  function renderItems(items) {
-    menuItemsDiv.innerHTML = '';
-    items.forEach(item => {
-      let priceOptions = '';
-      if (item.price !== null && item.price > 0) {
-        priceOptions += `<option value="${item.price}">Regular - ${item.price.toFixed(3)} BHD</option>`;
-      }
-      if (item.extra_prices) {
-        item.extra_prices.forEach(p => {
-          priceOptions += `<option value="${p.price}">${p.label} - ${Number(p.price).toFixed(3)} BHD</option>`;
-        });
-      }
+ // ---------------- Render Items ----------------
+function renderItems(items) {
+  menuItemsDiv.innerHTML = '';
+  items.forEach(item => {
+    let priceOptions = '';
+    if (item.price !== null && item.price > 0) {
+      priceOptions += `<option value="${item.price}">Regular - ${item.price.toFixed(3)} BHD</option>`;
+    }
+    if (item.extra_prices) {
+      item.extra_prices.forEach(p => {
+        priceOptions += `<option value="${p.price}">${p.label} - ${Number(p.price).toFixed(3)} BHD</option>`;
+      });
+    }
 
-      const col = document.createElement('div');
-      col.className = 'col';
+    const col = document.createElement('div');
+    col.className = 'col';
 
-      col.innerHTML = `
-        <div class="card menu-card shadow-sm" data-id="${item.id}">
-          ${item.image_base64 ? `<img src="${item.image_base64}" class="menu-img">` : ''}
-          <div class="card-body">
-            <h6 class="fw-bold">${item.name}</h6>
-            <select class="form-select form-select-sm my-2 price-select">
-              ${priceOptions}
-            </select>
-            <div class="qty-wrapper d-flex justify-content-center align-items-center gap-2 mb-2">
-              <button class="btn btn-outline-secondary qty-minus">−</button>
-              <span class="qty-badge badge bg-success px-3">0</span>
-              <button class="btn btn-outline-secondary qty-plus">+</button>
-            </div>
-            <div class="text-center small text-success fw-bold">Tap + to add</div>
+    col.innerHTML = `
+      <div class="card menu-card shadow-sm" data-id="${item.id}">
+        ${item.image_base64 ? `<img src="${item.image_base64}" class="menu-img">` : ''}
+        <div class="card-body">
+          <h6 class="fw-bold">${item.name}</h6>
+          <small class="variant-display text-muted mb-1 d-block">${item.extra_prices && item.extra_prices.length ? 'Regular' : ''}</small>
+          <select class="form-select form-select-sm my-2 price-select">
+            ${priceOptions}
+          </select>
+          <div class="qty-wrapper d-flex justify-content-center align-items-center gap-2 mb-2">
+            <button class="btn btn-outline-secondary qty-minus">−</button>
+            <span class="qty-badge badge bg-success px-3">0</span>
+            <button class="btn btn-outline-secondary qty-plus">+</button>
           </div>
+          <div class="text-center small text-success fw-bold">Tap + to add</div>
         </div>
-      `;
+      </div>
+    `;
 
-      menuItemsDiv.appendChild(col);
-    });
-  }
+    menuItemsDiv.appendChild(col);
+  });
+}
+
+// ---------------- Update Variant Display ----------------
+document.addEventListener('change', e => {
+  if (!e.target.classList.contains('price-select')) return;
+
+  const card = e.target.closest('.card');
+  const variantDisplay = card.querySelector('.variant-display');
+  const selectedVariant = e.target.options[e.target.selectedIndex].text.split(' - ')[0];
+  variantDisplay.textContent = selectedVariant;
+});
+
 
   // ---------------- Search/Filter ----------------
   searchInput.addEventListener('input', () => {
@@ -112,19 +124,22 @@ document.addEventListener('DOMContentLoaded', () => {
     searchInput.dispatchEvent(new Event('input'))
   );
 
-  // ---------------- Card Qty + - ----------------
+  // ---------------- Card Qty + - (With Variants) ----------------
   document.addEventListener('click', e => {
     const card = e.target.closest('.card');
     if (!card) return;
 
     const id = card.dataset.id;
-    const price = parseFloat(card.querySelector('.price-select').value);
+    const priceSelect = card.querySelector('.price-select');
+    const price = parseFloat(priceSelect.value);
+    const variant = priceSelect.options[priceSelect.selectedIndex].text.split(' - ')[0];
+
     const badge = card.querySelector('.qty-badge');
 
     const item = allItems.find(i => i.id == id);
     if (!item) return;
 
-    const key = id + '-' + price;
+    const key = id + '-' + price; // unique per variant
     const existing = cart.find(c => c.key === key);
 
     let current = parseInt(badge.textContent);
@@ -133,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
       current++;
       badge.textContent = current;
       if (existing) existing.qty++;
-      else cart.push({ key, name: item.name, price, qty: 1 });
+      else cart.push({ key, name: item.name, variant, price, qty: 1 });
       updateCartButton();
     }
 
@@ -148,69 +163,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ---------------- Cart Button ----------------
+  // ---------------- Update Cart Button (Show Variant Summary) ----------------
   function updateCartButton() {
-    const totalQty = cart.reduce((s, i) => s + i.qty, 0);
-    cartButton.style.display = totalQty ? 'block' : 'none';
-    cartButton.textContent = `🛒 Cart (${totalQty})`;
+    if (!cart.length) {
+      cartButton.style.display = 'none';
+      return;
+    }
+
+    cartButton.style.display = 'block';
+    const summary = cart.map(i => `${i.name}${i.variant ? ' (' + i.variant + ')' : ''} ×${i.qty}`).join(', ');
+    cartButton.textContent = `🛒 Cart (${summary})`;
   }
 
   cartButton.addEventListener('click', () => {
     renderCartModal();
     cartModal.show();
   });
-function generateWhatsAppReceipt(orderType, cart, customer = {}) {
-  let msg = "🛍️ *New Customer Order*\n\n";
 
-  // ===== Order Type =====
-  if (orderType === 'dining') {
-    const table = customer.tableNo || '-';
-    const persons = customer.personsCount || '-';
-    msg += `🍽️ *Dining*\n`;
-    msg += `Table: ${table} | Persons: ${persons}\n\n`;
-  } else if (orderType === 'delivery') {
-    const name = customer.name || '-';
-    const mobile = customer.mobile || '-';
-    const address = customer.address || '-';
-    const lat = customer.lat || '';
-    const lng = customer.lng || '';
-
-    msg += `🚚 *Delivery*\n`;
-    msg += `*Name:* ${name}\n`;
-    msg += `*Mobile:* ${mobile}\n`;
-    msg += `*Address:* ${address}\n`;
-    if (lat && lng) msg += `📍 Map: https://maps.google.com/?q=${lat},${lng}\n`;
-    msg += `\n`;
-  }
-
-  // ===== Items =====
-  msg += "🛒 *Order Items*\n";
-  msg += "Item                     Qty   Price   Total\n";
-  msg += "-----------------------------------------\n";
-
-  let grandTotal = 0;
-  cart.forEach(i => {
-    const itemTotal = i.price * i.qty;
-    grandTotal += itemTotal;
-
-    // Aligning text roughly for WhatsApp monospace readability
-    let name = i.name.length > 20 ? i.name.substring(0, 17) + "..." : i.name;
-    let qty = i.qty.toString().padStart(3, ' ');
-    let price = i.price.toFixed(3).padStart(6, ' ');
-    let total = itemTotal.toFixed(3).padStart(6, ' ');
-
-    msg += `${name.padEnd(23, ' ')}${qty} ${price} ${total}\n`;
-  });
-
-  msg += "-----------------------------------------\n";
-  msg += `💰 *Grand Total:* ${grandTotal.toFixed(3)} BHD\n`;
-  msg += "\n📌 Please process this order promptly.";
-
-  return msg;
-}
-
-
-  // ---------------- Render Cart ----------------
+  // ---------------- Render Cart Modal ----------------
   function renderCartModal() {
     cartItemsDiv.innerHTML = '';
     let total = 0;
@@ -220,7 +190,7 @@ function generateWhatsAppReceipt(orderType, cart, customer = {}) {
       cartItemsDiv.innerHTML += `
         <div class="d-flex justify-content-between align-items-center mb-2">
           <div>
-            <b>${item.name}</b><br>
+            <b>${item.name}${item.variant ? ' (' + item.variant + ')' : ''}</b><br>
             <small>${item.price.toFixed(3)} BHD</small>
           </div>
           <div>
@@ -249,47 +219,93 @@ function generateWhatsAppReceipt(orderType, cart, customer = {}) {
   });
 
   // ---------------- WhatsApp Send ----------------
-  
+  sendOrderBtn.addEventListener('click', () => {
+    if (!cart.length) return;
 
-sendOrderBtn.addEventListener('click', () => {
-  if (!cart.length) return;
+    const customerData = {
+      tableNo: tableNo.value,
+      personsCount: personsCount.value,
+      name: custName.value.trim(),
+      mobile: custMobile.value.trim(),
+      address: custAddress.value.trim(),
+      lat: latInput.value,
+      lng: lngInput.value
+    };
 
-  const customerData = {
-    tableNo: tableNo.value,
-    personsCount: personsCount.value,
-    name: custName.value.trim(),
-    mobile: custMobile.value.trim(),
-    address: custAddress.value.trim(),
-    lat: latInput.value,
-    lng: lngInput.value
-  };
+    const message = generateWhatsAppReceipt(orderType.value, cart, customerData);
+    window.open(`https://wa.me/97366939332?text=${encodeURIComponent(message)}`, '_blank');
 
-  const message = generateWhatsAppReceipt(orderType.value, cart, customerData);
-  window.open(`https://wa.me/97366939332?text=${encodeURIComponent(message)}`, '_blank');
+    // Reset everything
+    cartModal.hide();
+    cart = [];
+    updateCartButton();
+    document.querySelectorAll('.qty-badge').forEach(b => b.textContent = '0');
+    tableNo.value = '';
+    personsCount.value = '';
+    custName.value = '';
+    custMobile.value = '';
+    custAddress.value = '';
+    latInput.value = '';
+    lngInput.value = '';
+    autoAddressBtn.innerText = "📍 Auto Detect Address";
+    orderType.value = 'dining';
+    diningFields.style.display = 'block';
+    deliveryFields.style.display = 'none';
+    categoryFilter.value = '';
+    searchInput.value = '';
+    searchInput.dispatchEvent(new Event('input'));
+    menuItemsDiv.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    searchInput.focus();
+  });
 
-  // Close modal & reset everything
-  cartModal.hide();
-  cart = [];
-  updateCartButton();
-  document.querySelectorAll('.qty-badge').forEach(b => b.textContent = '0');
-  tableNo.value = '';
-  personsCount.value = '';
-  custName.value = '';
-  custMobile.value = '';
-  custAddress.value = '';
-  latInput.value = '';
-  lngInput.value = '';
-  autoAddressBtn.innerText = "📍 Auto Detect Address";
-  orderType.value = 'dining';
-  diningFields.style.display = 'block';
-  deliveryFields.style.display = 'none';
-  categoryFilter.value = '';
-  searchInput.value = '';
-  searchInput.dispatchEvent(new Event('input'));
-  menuItemsDiv.scrollTo({ top: 0, behavior: 'smooth' });
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  searchInput.focus();
-});
+  // ---------------- WhatsApp Receipt ----------------
+  function generateWhatsAppReceipt(orderType, cart, customer = {}) {
+    let msg = "🛍️ *New Customer Order*\n\n";
+
+    // ===== Order Type =====
+    if (orderType === 'dining') {
+      const table = customer.tableNo || '-';
+      const persons = customer.personsCount || '-';
+      msg += `🍽️ *Dining*\nTable: ${table} | Persons: ${persons}\n\n`;
+    } else if (orderType === 'delivery') {
+      const name = customer.name || '-';
+      const mobile = customer.mobile || '-';
+      const address = customer.address || '-';
+      const lat = customer.lat || '';
+      const lng = customer.lng || '';
+
+      msg += `🚚 *Delivery*\n*Name:* ${name}\n*Mobile:* ${mobile}\n*Address:* ${address}\n`;
+      if (lat && lng) msg += `📍 Map: https://maps.google.com/?q=${lat},${lng}\n`;
+      msg += `\n`;
+    }
+
+    // ===== Items =====
+    msg += "🛒 *Order Items*\n";
+    msg += "Item                     Qty   Price   Total\n";
+    msg += "-----------------------------------------\n";
+
+    let grandTotal = 0;
+    cart.forEach(i => {
+      const itemTotal = i.price * i.qty;
+      grandTotal += itemTotal;
+
+      let name = i.name;
+      if (i.variant) name += ` (${i.variant})`;
+
+      let qty = i.qty.toString().padStart(3, ' ');
+      let price = i.price.toFixed(3).padStart(6, ' ');
+      let total = itemTotal.toFixed(3).padStart(6, ' ');
+
+      msg += `${name.padEnd(23, ' ')}${qty} ${price} ${total}\n`;
+    });
+
+    msg += "-----------------------------------------\n";
+    msg += `💰 *Grand Total:* ${grandTotal.toFixed(3)} BHD\n`;
+    msg += "\n📌 Please process this order promptly.";
+
+    return msg;
+  }
 
   // ================= GPS / AUTO DETECT ADDRESS =================
   autoAddressBtn?.addEventListener('click', () => {
