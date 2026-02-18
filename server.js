@@ -31,15 +31,16 @@ function isAdmin(req, res, next) {
 async function createTables() {
   try {
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS items (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        category VARCHAR(100) NOT NULL,
-        price DECIMAL(10,3) NULL,
-        description TEXT,
-        image LONGBLOB
-      );
-    `);
+  CREATE TABLE IF NOT EXISTS items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    price DECIMAL(10,3) NULL,
+    description TEXT,
+    image LONGBLOB,
+    vat_enabled TINYINT(1) NOT NULL DEFAULT 0
+  );
+`);
 
     // Table for extra prices
     await pool.query(`
