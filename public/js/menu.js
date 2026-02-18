@@ -278,28 +278,55 @@ function updateCartButton() {
 
   // ---------------- Render Cart Modal ----------------
   function renderCartModal() {
-    cartItemsDiv.innerHTML = '';
-    let total = 0;
-    cart.forEach((item, index) => {
-      const itemTotal = item.price * item.qty;
-      total += itemTotal;
-      cartItemsDiv.innerHTML += `
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <div>
-            <b>${item.name}${item.variant ? ' (' + item.variant + ')' : ''}</b><br>
-            <small>${item.price.toFixed(3)} BHD</small>
-          </div>
-          <div>
-            <button class="btn btn-sm btn-outline-secondary cart-minus" data-i="${index}">-</button>
-            <span class="mx-2">${item.qty}</span>
-            <button class="btn btn-sm btn-outline-secondary cart-plus" data-i="${index}">+</button>
-            <button class="btn btn-sm btn-danger ms-2 cart-remove" data-i="${index}">✕</button>
-          </div>
+  cartItemsDiv.innerHTML = '';
+  let total = 0;
+  let totalVAT = 0;
+
+  cart.forEach((item, index) => {
+    const itemObj = allItems.find(i => i.id == item.key.split('-')[0]);
+    const vatEnabled = itemObj?.vatEnabled;
+
+    const price = item.price; // already VAT included if vatEnabled
+    const qty = item.qty;
+    let vatAmount = 0;
+    let netPrice = price;
+
+    if (vatEnabled) {
+      vatAmount = price * 0.10 / 1.10; // 10% VAT included in price
+      netPrice = price - vatAmount;
+    }
+
+    const itemTotal = price * qty;
+    total += itemTotal;
+    totalVAT += vatAmount * qty;
+
+    cartItemsDiv.innerHTML += `
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+          <b>${item.name}${item.variant ? ' (' + item.variant + ')' : ''}</b><br>
+          <small>${price.toFixed(3)} BHD${vatEnabled ? ` (VAT ${vatAmount.toFixed(3)} included)` : ''}</small>
         </div>
-      `;
-    });
-    cartTotalSpan.textContent = total.toFixed(3);
+        <div>
+          <button class="btn btn-sm btn-outline-secondary cart-minus" data-i="${index}">-</button>
+          <span class="mx-2">${item.qty}</span>
+          <button class="btn btn-sm btn-outline-secondary cart-plus" data-i="${index}">+</button>
+          <button class="btn btn-sm btn-danger ms-2 cart-remove" data-i="${index}">✕</button>
+        </div>
+      </div>
+    `;
+  });
+
+  cartTotalSpan.textContent = total.toFixed(3);
+  // Optional: Show total VAT
+  if (!document.getElementById('cartVAT')) {
+    const vatDiv = document.createElement('div');
+    vatDiv.id = 'cartVAT';
+    vatDiv.className = 'text-end small text-muted mb-2';
+    cartItemsDiv.parentNode.insertBefore(vatDiv, cartTotalSpan.parentNode);
   }
+  document.getElementById('cartVAT').textContent = `Total VAT: ${totalVAT.toFixed(3)} BHD`;
+}
+
 
   // ---------------- Modal Qty / Remove ----------------
   document.addEventListener('click', e => {
@@ -401,20 +428,31 @@ function updateCartButton() {
 
   let grandTotal = 0;
   cart.forEach(i => {
-    const itemTotal = i.price * i.qty;
-    grandTotal += itemTotal;
+  const itemObj = allItems.find(it => it.id == i.key.split('-')[0]);
+  const vatEnabled = itemObj?.vatEnabled;
 
-    let name = i.name;
-    if (i.variant) name += ` (${i.variant})`;
-    if (name.length > itemColWidth) name = name.substring(0, itemColWidth - 3) + '...';
+  let price = i.price;
+  let vatAmount = 0;
 
-    const itemCol = name.padEnd(itemColWidth, ' ');
-    const qtyCol = i.qty.toString().padStart(qtyColWidth, ' ');
-    const priceCol = i.price.toFixed(3).padStart(priceColWidth, ' ');
-    const totalCol = itemTotal.toFixed(3).padStart(totalColWidth, ' ');
+  if (vatEnabled) {
+    vatAmount = price * 0.10 / 1.10; // 10% included
+  }
 
-    msg += `${itemCol} ${qtyCol} ${priceCol} ${totalCol}\n`;
-  });
+  const itemTotal = price * i.qty;
+  grandTotal += itemTotal;
+
+  let name = i.name;
+  if (i.variant) name += ` (${i.variant})`;
+  if (name.length > itemColWidth) name = name.substring(0, itemColWidth - 3) + '...';
+
+  const itemCol = name.padEnd(itemColWidth, ' ');
+  const qtyCol = i.qty.toString().padStart(qtyColWidth, ' ');
+  const priceCol = price.toFixed(3).padStart(priceColWidth, ' ');
+  const totalCol = itemTotal.toFixed(3).padStart(totalColWidth, ' ');
+
+  msg += `${itemCol} ${qtyCol} ${priceCol} ${totalCol}${vatEnabled ? ' (VAT incl)' : ''}\n`;
+});
+
 
   msg += '-'.repeat(itemColWidth + qtyColWidth + priceColWidth + totalColWidth + 6) + '\n';
   msg += "```"; // end monospace
