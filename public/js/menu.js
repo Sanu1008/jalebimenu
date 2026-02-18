@@ -116,14 +116,14 @@ function renderCartModal() {
     const itemObj = allItems.find(i => i.id == item.key.split('-')[0]);
     const vatEnabled = itemObj?.vatEnabled;
 
-    const basePrice = item.price; // base price
+    const basePrice = item.price; // price WITHOUT VAT
     const qty = item.qty;
 
     let vatAmount = 0;
     let finalPrice = basePrice;
 
     if (vatEnabled) {
-      vatAmount = basePrice * 0.10;  // 10% VAT
+      vatAmount = basePrice * 0.10; // 10% VAT
       finalPrice = basePrice + vatAmount;
     }
 
@@ -148,8 +148,17 @@ function renderCartModal() {
   });
 
   cartTotalSpan.textContent = total.toFixed(3);
+
+  // Show total VAT
+  if (!document.getElementById('cartVAT')) {
+    const vatDiv = document.createElement('div');
+    vatDiv.id = 'cartVAT';
+    vatDiv.className = 'text-end small text-muted mb-2';
+    cartItemsDiv.parentNode.insertBefore(vatDiv, cartTotalSpan.parentNode);
+  }
   document.getElementById('cartVAT').textContent = `Total VAT: ${totalVAT.toFixed(3)} BHD`;
 }
+
 
 
 // ---------------- WhatsApp Receipt ----------------
@@ -448,14 +457,11 @@ function updateCartButton() {
   const itemObj = allItems.find(it => it.id == i.key.split('-')[0]);
   const vatEnabled = itemObj?.vatEnabled;
 
-  let price = i.price;
-  let vatAmount = 0;
-
-  if (vatEnabled) {
-  vatAmount = price * 0.10; // 10% VAT
-}
+  let price = i.price; // base price
+let vatAmount = 0;
+if (vatEnabled) vatAmount = price * 0.10;
 const itemTotal = (price + vatAmount) * i.qty;
-  grandTotal += itemTotal;
+grandTotal += itemTotal;
 
   let name = i.name;
   if (i.variant) name += ` (${i.variant})`;
