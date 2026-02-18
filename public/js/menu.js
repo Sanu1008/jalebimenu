@@ -110,18 +110,32 @@ function renderItems(items) {
 function renderCartModal() {
   cartItemsDiv.innerHTML = '';
   let total = 0;
+  let totalVAT = 0;
+
   cart.forEach((item, index) => {
     const itemObj = allItems.find(i => i.id == item.key.split('-')[0]);
     const vatEnabled = itemObj?.vatEnabled;
-    const itemPrice = vatEnabled ? item.price * 1.05 : item.price; // Apply 5% VAT if enabled
-    const itemTotal = itemPrice * item.qty;
+
+    const basePrice = item.price; // base price
+    const qty = item.qty;
+
+    let vatAmount = 0;
+    let finalPrice = basePrice;
+
+    if (vatEnabled) {
+      vatAmount = basePrice * 0.10;  // 10% VAT
+      finalPrice = basePrice + vatAmount;
+    }
+
+    const itemTotal = finalPrice * qty;
     total += itemTotal;
+    totalVAT += vatAmount * qty;
 
     cartItemsDiv.innerHTML += `
       <div class="d-flex justify-content-between align-items-center mb-2">
         <div>
           <b>${item.name}${item.variant ? ' (' + item.variant + ')' : ''}</b><br>
-          <small>${itemPrice.toFixed(3)} BHD${vatEnabled ? ' (VAT)' : ''}</small>
+          <small>${finalPrice.toFixed(3)} BHD${vatEnabled ? ` (VAT ${vatAmount.toFixed(3)})` : ''}</small>
         </div>
         <div>
           <button class="btn btn-sm btn-outline-secondary cart-minus" data-i="${index}">-</button>
@@ -132,8 +146,11 @@ function renderCartModal() {
       </div>
     `;
   });
+
   cartTotalSpan.textContent = total.toFixed(3);
+  document.getElementById('cartVAT').textContent = `Total VAT: ${totalVAT.toFixed(3)} BHD`;
 }
+
 
 // ---------------- WhatsApp Receipt ----------------
 function generateWhatsAppReceipt(orderType, cart, customer = {}) {
@@ -435,10 +452,9 @@ function updateCartButton() {
   let vatAmount = 0;
 
   if (vatEnabled) {
-    vatAmount = price * 0.10 / 1.10; // 10% included
-  }
-
-  const itemTotal = price * i.qty;
+  vatAmount = price * 0.10; // 10% VAT
+}
+const itemTotal = (price + vatAmount) * i.qty;
   grandTotal += itemTotal;
 
   let name = i.name;
