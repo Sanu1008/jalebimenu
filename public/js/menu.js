@@ -286,8 +286,19 @@ function updateCartButton() {
 
   // ===== Items =====
   msg += "🛒 *Order Items*\n";
-  msg += "Item                      Qty  Price   Total\n";
-  msg += "-------------------------------------------\n";
+
+  // Determine dynamic widths
+  const nameWidth = Math.max(...cart.map(i => {
+    let name = i.name;
+    if (i.variant) name += ` (${i.variant})`;
+    return name.length;
+  }), 4); // minimum width 4
+  const qtyWidth = 3;
+  const priceWidth = 6;
+  const totalWidth = 6;
+
+  msg += `Item${' '.repeat(nameWidth - 4)}  Qty  Price  Total\n`;
+  msg += '-'.repeat(nameWidth + qtyWidth + priceWidth + totalWidth + 6) + '\n';
 
   let grandTotal = 0;
   cart.forEach(i => {
@@ -296,21 +307,17 @@ function updateCartButton() {
 
     let name = i.name;
     if (i.variant) name += ` (${i.variant})`;
+    if (name.length > nameWidth) name = name.substring(0, nameWidth - 3) + '...';
 
-    // truncate long item names
-    if (name.length > 22) name = name.substring(0, 19) + '...';
+    const itemCol = name.padEnd(nameWidth, ' ');
+    const qtyCol = i.qty.toString().padStart(Math.floor((qtyWidth + i.qty.toString().length)/2), ' ').padEnd(qtyWidth, ' ');
+    const priceCol = i.price.toFixed(3).padStart(priceWidth, ' ');
+    const totalCol = itemTotal.toFixed(3).padStart(totalWidth, ' ');
 
-    // Columns
-    const itemCol = name.padEnd(24, ' ');
-    const qtyStr = i.qty.toString();
-    const qtyCol = qtyStr.padStart(Math.floor((3 + qtyStr.length)/2), ' ').padEnd(3, ' '); // visually centered
-    const priceCol = i.price.toFixed(3).padStart(6, ' ');
-    const totalCol = itemTotal.toFixed(3).padStart(6, ' ');
-
-    msg += `${itemCol}${qtyCol}${priceCol}${totalCol}\n`;
+    msg += `${itemCol}  ${qtyCol}  ${priceCol}  ${totalCol}\n`;
   });
 
-  msg += "-------------------------------------------\n";
+  msg += '-'.repeat(nameWidth + qtyWidth + priceWidth + totalWidth + 6) + '\n';
   msg += `💰 *Grand Total:* ${grandTotal.toFixed(3)} BHD\n`;
   msg += "\n📌 Please process this order promptly.";
 
