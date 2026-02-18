@@ -164,16 +164,20 @@ document.addEventListener('change', e => {
   });
 
   // ---------------- Update Cart Button (Show Variant Summary) ----------------
-  function updateCartButton() {
-    if (!cart.length) {
-      cartButton.style.display = 'none';
-      return;
-    }
-
-    cartButton.style.display = 'block';
-    const summary = cart.map(i => `${i.name}${i.variant ? ' (' + i.variant + ')' : ''} ×${i.qty}`).join(', ');
-    cartButton.textContent = `🛒 Cart (${summary})`;
+  // ---------------- Update Cart Button (Simple Summary) ----------------
+function updateCartButton() {
+  if (!cart.length) {
+    cartButton.style.display = 'none';
+    return;
   }
+
+  cartButton.style.display = 'block';
+
+  // Option 1: Show only total item count
+  const totalQty = cart.reduce((s, i) => s + i.qty, 0);
+  cartButton.textContent = `🛒 Cart (${totalQty} items)`;
+}
+
 
   cartButton.addEventListener('click', () => {
     renderCartModal();
