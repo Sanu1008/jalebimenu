@@ -77,33 +77,23 @@
         <!-- ================= DELIVERY ================= -->
         <div id="deliveryFields" style="display:none">
 
-          <input id="custName" class="form-control mb-2" placeholder="Customer Name">
+  <input id="custName" class="form-control mb-2" placeholder="Customer Name">
 
-          <input id="custMobile" class="form-control mb-2" placeholder="Mobile Number">
+  <input id="custMobile" class="form-control mb-2" placeholder="Mobile Number">
 
-          <select id="custLocation" class="form-select mb-2">
-            <option value="">Select Location</option>
-            <option>Manama</option>
-            <option>Riffa</option>
-            <option>Muharraq</option>
-            <option>Isa Town</option>
-          </select>
+  <button id="autoAddressBtn" class="btn btn-outline-primary w-100 mb-2">
+    📍 Auto Detect Address
+  </button>
 
-          <button id="pickLocationBtn" class="btn btn-outline-primary w-100 mb-2">
-  📍 Pick Location from Map
-</button>
+  <textarea id="custAddress"
+    class="form-control mb-3"
+    placeholder="Building / Road / Block / Flat">
+  </textarea>
 
-<textarea id="custAddress"
-  class="form-control mb-2"
-  placeholder="Building / Road / Block / Flat OR use map">
-</textarea>
+  <input type="hidden" id="lat">
+  <input type="hidden" id="lng">
 
-<input type="hidden" id="lat">
-<input type="hidden" id="lng">
-
-
-        </div>
-
+</div>
         <hr>
 
         <!-- ================= CART ITEMS ================= -->

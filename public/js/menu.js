@@ -19,7 +19,6 @@ const personsCount = document.getElementById('personsCount');
 
 const custName = document.getElementById('custName');
 const custMobile = document.getElementById('custMobile');
-const custLocation = document.getElementById('custLocation');
 const custAddress = document.getElementById('custAddress');
 const pickLocationBtn = document.getElementById('pickLocationBtn');
 const latInput = document.getElementById('lat');
@@ -269,34 +268,32 @@ document.addEventListener('click', e => {
   // ===== Delivery =====
   else {
 
-    const name = custName.value.trim();
-    const mobile = custMobile.value.trim();
+  const name = custName.value.trim();
+  const mobile = custMobile.value.trim();
+  const address = custAddress.value.trim();
 
-    if (!name || !mobile) {
-  alert("Please enter Name and Mobile");
-  return;
-}
-
-// require address OR GPS
-if (!custAddress.value.trim() && !latInput.value) {
-  alert("Please type address OR pick location from map");
-  return;
-}
-
-
-    msg += `🚚 Delivery\n`;
-    msg += `Name: ${name}\n`;
-    msg += `Mobile: ${mobile}\n`;
-    msg += `Location: ${custLocation.value}\n`;
-    msg += `Address: ${custAddress.value}\n`;
-
-if (latInput.value) {
-  msg += `Map: https://maps.google.com/?q=${latInput.value},${lngInput.value}\n`;
-}
-
-msg += "\n";
-
+  if (!name || !mobile) {
+    alert("Please enter Name and Mobile");
+    return;
   }
+
+  if (!address && !latInput.value) {
+    alert("Please type address OR pick location");
+    return;
+  }
+
+  msg += `🚚 Delivery\n`;
+  msg += `Name: ${name}\n`;
+  msg += `Mobile: ${mobile}\n`;
+  msg += `Address: ${address}\n`;
+
+  // clickable map link
+  if (latInput.value) {
+    msg += `Map: https://maps.google.com/?q=${latInput.value},${lngInput.value}\n`;
+  }
+
+  msg += "\n";
+}
 
   let total = 0;
 
@@ -329,7 +326,47 @@ pickLocationBtn?.addEventListener('click', () => {
     lngInput.value = lng;
 
     // Auto fill simple address
-    custAddress.value = `Map Location Selected`;
+    // ================= GPS LOCATION PICKER =================
+pickLocationBtn?.addEventListener('click', () => {
+
+  if (!navigator.geolocation) {
+    alert("GPS not supported on this device");
+    return;
+  }
+
+  pickLocationBtn.innerText = "Getting location...";
+
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+
+    latInput.value = lat;
+    lngInput.value = lng;
+
+    try {
+      // reverse geocode to readable address
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
+      );
+
+      const data = await res.json();
+
+      custAddress.value = data.display_name || `${lat}, ${lng}`;
+
+      pickLocationBtn.innerText = "📍 Address Detected ✓";
+
+    } catch {
+      custAddress.value = `${lat}, ${lng}`;
+      pickLocationBtn.innerText = "📍 Location Added";
+    }
+
+  }, () => {
+    pickLocationBtn.innerText = "📍 Pick Location";
+    alert("Location permission denied");
+  });
+});
+
 
     pickLocationBtn.innerText = "📍 Location Selected ✓";
 
