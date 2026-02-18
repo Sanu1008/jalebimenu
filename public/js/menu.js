@@ -9,28 +9,28 @@ document.addEventListener('DOMContentLoaded', () => {
   const cartItemsDiv = document.getElementById('cartItems');
   const cartTotalSpan = document.getElementById('cartTotal');
   const sendOrderBtn = document.getElementById('sendOrderBtn');
+
   // ================= ORDER TYPE ELEMENTS =================
-const orderType = document.getElementById('orderType');
-const diningFields = document.getElementById('diningFields');
-const deliveryFields = document.getElementById('deliveryFields');
+  const orderType = document.getElementById('orderType');
+  const diningFields = document.getElementById('diningFields');
+  const deliveryFields = document.getElementById('deliveryFields');
 
-const tableNo = document.getElementById('tableNo');
-const personsCount = document.getElementById('personsCount');
+  const tableNo = document.getElementById('tableNo');
+  const personsCount = document.getElementById('personsCount');
 
-const custName = document.getElementById('custName');
-const custMobile = document.getElementById('custMobile');
-const custAddress = document.getElementById('custAddress');
-const pickLocationBtn = document.getElementById('pickLocationBtn');
-const latInput = document.getElementById('lat');
-const lngInput = document.getElementById('lng');
-// ================= ORDER TYPE TOGGLE =================
-orderType.addEventListener('change', () => {
-  const isDining = orderType.value === 'dining';
+  const custName = document.getElementById('custName');
+  const custMobile = document.getElementById('custMobile');
+  const custAddress = document.getElementById('custAddress');
+  const autoAddressBtn = document.getElementById('autoAddressBtn');
+  const latInput = document.getElementById('lat');
+  const lngInput = document.getElementById('lng');
 
-  diningFields.style.display = isDining ? 'block' : 'none';
-  deliveryFields.style.display = isDining ? 'none' : 'block';
-});
-
+  // ================= ORDER TYPE TOGGLE =================
+  orderType.addEventListener('change', () => {
+    const isDining = orderType.value === 'dining';
+    diningFields.style.display = isDining ? 'block' : 'none';
+    deliveryFields.style.display = isDining ? 'none' : 'block';
+  });
 
   if (!menuItemsDiv || !searchInput || !categoryFilter || !cartButton) return;
 
@@ -55,24 +55,18 @@ orderType.addEventListener('change', () => {
   // ---------------- Categories ----------------
   function populateCategoryFilter() {
     categoryFilter.innerHTML = `<option value="">All Categories</option>`;
-
     [...new Set(allItems.map(i => i.category))]
       .forEach(c => categoryFilter.innerHTML += `<option>${c}</option>`);
   }
 
   // ---------------- Render Items ----------------
   function renderItems(items) {
-
     menuItemsDiv.innerHTML = '';
-
     items.forEach(item => {
-
       let priceOptions = '';
-
       if (item.price !== null && item.price > 0) {
         priceOptions += `<option value="${item.price}">Regular - ${item.price.toFixed(3)} BHD</option>`;
       }
-
       if (item.extra_prices) {
         item.extra_prices.forEach(p => {
           priceOptions += `<option value="${p.price}">${p.label} - ${Number(p.price).toFixed(3)} BHD</option>`;
@@ -84,29 +78,18 @@ orderType.addEventListener('change', () => {
 
       col.innerHTML = `
         <div class="card menu-card shadow-sm" data-id="${item.id}">
-
           ${item.image_base64 ? `<img src="${item.image_base64}" class="menu-img">` : ''}
-
           <div class="card-body">
-
             <h6 class="fw-bold">${item.name}</h6>
-
             <select class="form-select form-select-sm my-2 price-select">
               ${priceOptions}
             </select>
-
             <div class="qty-wrapper d-flex justify-content-center align-items-center gap-2 mb-2">
-  <button class="btn btn-outline-secondary qty-minus">−</button>
-
-  <span class="qty-badge badge bg-success px-3">0</span>
-
-  <button class="btn btn-outline-secondary qty-plus">+</button>
-</div>
-
-<div class="text-center small text-success fw-bold">
-  Tap + to add
-</div>
-
+              <button class="btn btn-outline-secondary qty-minus">−</button>
+              <span class="qty-badge badge bg-success px-3">0</span>
+              <button class="btn btn-outline-secondary qty-plus">+</button>
+            </div>
+            <div class="text-center small text-success fw-bold">Tap + to add</div>
           </div>
         </div>
       `;
@@ -118,124 +101,93 @@ orderType.addEventListener('change', () => {
   // ---------------- Search/Filter ----------------
   searchInput.addEventListener('input', () => {
     const term = searchInput.value.toLowerCase();
-
     const filtered = allItems.filter(i =>
       i.name.toLowerCase().includes(term) &&
       (!categoryFilter.value || i.category === categoryFilter.value)
     );
-
     renderItems(filtered);
   });
 
   categoryFilter.addEventListener('change', () =>
     searchInput.dispatchEvent(new Event('input'))
   );
-// ---------------- Card Qty + - (Instant Cart Update + badge sync) ----------------
-document.addEventListener('click', e => {
 
-  const card = e.target.closest('.card');
-  if (!card) return;
+  // ---------------- Card Qty + - ----------------
+  document.addEventListener('click', e => {
+    const card = e.target.closest('.card');
+    if (!card) return;
 
-  const id = card.dataset.id;
-  const price = parseFloat(card.querySelector('.price-select').value);
-  const badge = card.querySelector('.qty-badge'); // ⭐ use badge
+    const id = card.dataset.id;
+    const price = parseFloat(card.querySelector('.price-select').value);
+    const badge = card.querySelector('.qty-badge');
 
-  const item = allItems.find(i => i.id == id);
-  if (!item) return;
+    const item = allItems.find(i => i.id == id);
+    if (!item) return;
 
-  const key = id + '-' + price;
-  const existing = cart.find(c => c.key === key);
+    const key = id + '-' + price;
+    const existing = cart.find(c => c.key === key);
 
-  let current = parseInt(badge.textContent);
+    let current = parseInt(badge.textContent);
 
-  // ➕ ADD
-  if (e.target.classList.contains('qty-plus')) {
+    if (e.target.classList.contains('qty-plus')) {
+      current++;
+      badge.textContent = current;
+      if (existing) existing.qty++;
+      else cart.push({ key, name: item.name, price, qty: 1 });
+      updateCartButton();
+    }
 
-    current++;
-    badge.textContent = current;   // ⭐ update badge
-
-    if (existing) existing.qty++;
-    else cart.push({ key, name: item.name, price, qty: 1 });
-
-    updateCartButton();
-  }
-
-  // ➖ REMOVE
-  if (e.target.classList.contains('qty-minus')) {
-
-    if (current <= 0) return;
-
-    current--;
-    badge.textContent = current;   // ⭐ update badge
-
-    if (!existing) return;
-
-    existing.qty--;
-
-    if (existing.qty <= 0)
-      cart = cart.filter(c => c.key !== key);
-
-    updateCartButton();
-  }
-});
-
-
+    if (e.target.classList.contains('qty-minus')) {
+      if (current <= 0) return;
+      current--;
+      badge.textContent = current;
+      if (!existing) return;
+      existing.qty--;
+      if (existing.qty <= 0) cart = cart.filter(c => c.key !== key);
+      updateCartButton();
+    }
+  });
 
   // ---------------- Cart Button ----------------
   function updateCartButton() {
     const totalQty = cart.reduce((s, i) => s + i.qty, 0);
-
     cartButton.style.display = totalQty ? 'block' : 'none';
     cartButton.textContent = `🛒 Cart (${totalQty})`;
   }
 
-
-  // ---------------- Open Modal ----------------
   cartButton.addEventListener('click', () => {
     renderCartModal();
     cartModal.show();
   });
 
-
   // ---------------- Render Cart ----------------
   function renderCartModal() {
-
     cartItemsDiv.innerHTML = '';
     let total = 0;
-
     cart.forEach((item, index) => {
-
       const itemTotal = item.price * item.qty;
       total += itemTotal;
-
       cartItemsDiv.innerHTML += `
         <div class="d-flex justify-content-between align-items-center mb-2">
-
           <div>
             <b>${item.name}</b><br>
             <small>${item.price.toFixed(3)} BHD</small>
           </div>
-
           <div>
             <button class="btn btn-sm btn-outline-secondary cart-minus" data-i="${index}">-</button>
             <span class="mx-2">${item.qty}</span>
             <button class="btn btn-sm btn-outline-secondary cart-plus" data-i="${index}">+</button>
             <button class="btn btn-sm btn-danger ms-2 cart-remove" data-i="${index}">✕</button>
           </div>
-
         </div>
       `;
     });
-
     cartTotalSpan.textContent = total.toFixed(3);
   }
 
-
   // ---------------- Modal Qty / Remove ----------------
   document.addEventListener('click', e => {
-
     const i = e.target.dataset.i;
-
     if (i === undefined) return;
 
     if (e.target.classList.contains('cart-plus')) cart[i].qty++;
@@ -246,136 +198,89 @@ document.addEventListener('click', e => {
     updateCartButton();
   });
 
-
   // ---------------- WhatsApp Send ----------------
   sendOrderBtn.addEventListener('click', () => {
+    if (!cart.length) return;
 
-  if (!cart.length) return;
+    let msg = "Hello, I would like to place an order:\n\n";
+    const type = orderType.value;
 
-  let msg = "Hello, I would like to place an order:\n\n";
+    if (type === 'dining') {
+      const table = tableNo.value || '-';
+      const persons = personsCount.value || '-';
+      msg += `🍽️ Dining\nTable: ${table}\nPersons: ${persons}\n\n`;
+    } else {
+      const name = custName.value.trim();
+      const mobile = custMobile.value.trim();
+      const address = custAddress.value.trim();
 
-  const type = orderType.value;
+      if (!name || !mobile) {
+        alert("Please enter Name and Mobile");
+        return;
+      }
+      if (!address && !latInput.value) {
+        alert("Please type address OR pick location");
+        return;
+      }
 
-  // ===== Dining =====
-  if (type === 'dining') {
+      msg += `🚚 Delivery\nName: ${name}\nMobile: ${mobile}\nAddress: ${address}\n`;
 
-    const table = tableNo.value || '-';
-    const persons = personsCount.value || '-';
+      if (latInput.value) {
+        msg += `Map: https://maps.google.com/?q=${latInput.value},${lngInput.value}\n`;
+      }
 
-    msg += `🍽️ Dining\nTable: ${table}\nPersons: ${persons}\n\n`;
-  }
-
-  // ===== Delivery =====
-  else {
-
-  const name = custName.value.trim();
-  const mobile = custMobile.value.trim();
-  const address = custAddress.value.trim();
-
-  if (!name || !mobile) {
-    alert("Please enter Name and Mobile");
-    return;
-  }
-
-  if (!address && !latInput.value) {
-    alert("Please type address OR pick location");
-    return;
-  }
-
-  msg += `🚚 Delivery\n`;
-  msg += `Name: ${name}\n`;
-  msg += `Mobile: ${mobile}\n`;
-  msg += `Address: ${address}\n`;
-
-  // clickable map link
-  if (latInput.value) {
-    msg += `Map: https://maps.google.com/?q=${latInput.value},${lngInput.value}\n`;
-  }
-
-  msg += "\n";
-}
-
-  let total = 0;
-
-  cart.forEach(i => {
-    const t = i.price * i.qty;
-    total += t;
-    msg += `• ${i.name} x${i.qty} - ${t.toFixed(3)} BHD\n`;
-  });
-
-  msg += `\nTotal: ${total.toFixed(3)} BHD`;
-
-  window.open(`https://wa.me/97366939332?text=${encodeURIComponent(msg)}`, '_blank');
-});
-// ================= GPS LOCATION PICKER =================
-pickLocationBtn?.addEventListener('click', () => {
-
-  if (!navigator.geolocation) {
-    alert("GPS not supported on this device");
-    return;
-  }
-
-  pickLocationBtn.innerText = "Getting location...";
-
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-
-    const lat = pos.coords.latitude;
-    const lng = pos.coords.longitude;
-
-    latInput.value = lat;
-    lngInput.value = lng;
-
-    // Auto fill simple address
-    // ================= GPS LOCATION PICKER =================
-pickLocationBtn?.addEventListener('click', () => {
-
-  if (!navigator.geolocation) {
-    alert("GPS not supported on this device");
-    return;
-  }
-
-  pickLocationBtn.innerText = "Getting location...";
-
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-
-    const lat = pos.coords.latitude;
-    const lng = pos.coords.longitude;
-
-    latInput.value = lat;
-    lngInput.value = lng;
-
-    try {
-      // reverse geocode to readable address
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
-      );
-
-      const data = await res.json();
-
-      custAddress.value = data.display_name || `${lat}, ${lng}`;
-
-      pickLocationBtn.innerText = "📍 Address Detected ✓";
-
-    } catch {
-      custAddress.value = `${lat}, ${lng}`;
-      pickLocationBtn.innerText = "📍 Location Added";
+      msg += "\n";
     }
 
-  }, () => {
-    pickLocationBtn.innerText = "📍 Pick Location";
-    alert("Location permission denied");
+    let total = 0;
+    cart.forEach(i => {
+      const t = i.price * i.qty;
+      total += t;
+      msg += `• ${i.name} x${i.qty} - ${t.toFixed(3)} BHD\n`;
+    });
+
+    msg += `\nTotal: ${total.toFixed(3)} BHD`;
+
+    window.open(`https://wa.me/97366939332?text=${encodeURIComponent(msg)}`, '_blank');
   });
-});
 
+  // ================= GPS / AUTO DETECT ADDRESS =================
+  autoAddressBtn?.addEventListener('click', () => {
 
-    pickLocationBtn.innerText = "📍 Location Selected ✓";
+    if (!navigator.geolocation) {
+      alert("GPS not supported on this device");
+      return;
+    }
 
-  }, () => {
-    pickLocationBtn.innerText = "📍 Pick Location from Map";
-    alert("Location permission denied");
+    autoAddressBtn.innerText = "Getting location...";
+
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      latInput.value = lat;
+      lngInput.value = lng;
+
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
+        );
+        const data = await res.json();
+        custAddress.value = data.display_name ? data.display_name.trim() : `${lat}, ${lng}`;
+        autoAddressBtn.innerText = "📍 Address Detected ✓";
+      } catch {
+        custAddress.value = `${lat}, ${lng}`;
+        autoAddressBtn.innerText = "📍 Location Added";
+      }
+
+    }, (err) => {
+      autoAddressBtn.innerText = "📍 Auto Detect Address";
+      alert("Location permission denied or error");
+      console.error(err);
+    });
+
   });
-});
-
 
   // ---------------- Start ----------------
   fetchMenuItems();
