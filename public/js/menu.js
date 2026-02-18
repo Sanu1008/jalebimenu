@@ -65,15 +65,21 @@ function renderItems(items) {
   items.forEach(item => {
     let priceOptions = '';
     if (item.price !== null && item.price > 0) {
-      const priceWithVAT = item.vatEnabled ? (item.price * 1.05).toFixed(3) : item.price.toFixed(3); // 5% VAT
-      priceOptions += `<option value="${item.price}">Regular - ${priceWithVAT} BHD ${item.vatEnabled ? '(VAT)' : ''}</option>`;
-    }
+  const mainPrice = Number(item.price);
+  const priceWithVAT = item.vatEnabled ? (mainPrice * 1.05).toFixed(3) : mainPrice.toFixed(3);
+  priceOptions += `<option value="${mainPrice}">${priceWithVAT} BHD ${item.vatEnabled ? '(VAT)' : ''}</option>`;
+}
+
     if (item.extra_prices) {
-      item.extra_prices.forEach(p => {
-        const priceWithVAT = item.vatEnabled ? (p.price * 1.05).toFixed(3) : p.price.toFixed(3);
-        priceOptions += `<option value="${p.price}">${p.label} - ${priceWithVAT} BHD ${item.vatEnabled ? '(VAT)' : ''}</option>`;
-      });
+  item.extra_prices.forEach(p => {
+    const priceNum = Number(p.price); // convert to number
+    if (!isNaN(priceNum)) {
+      const priceWithVAT = item.vatEnabled ? (priceNum * 1.05).toFixed(3) : priceNum.toFixed(3);
+      priceOptions += `<option value="${priceNum}">${p.label} - ${priceWithVAT} BHD ${item.vatEnabled ? '(VAT)' : ''}</option>`;
     }
+  });
+}
+
 
     const col = document.createElement('div');
     col.className = 'col';
