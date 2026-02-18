@@ -9,6 +9,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const cartItemsDiv = document.getElementById('cartItems');
   const cartTotalSpan = document.getElementById('cartTotal');
   const sendOrderBtn = document.getElementById('sendOrderBtn');
+  // ================= ORDER TYPE ELEMENTS =================
+const orderType = document.getElementById('orderType');
+const diningFields = document.getElementById('diningFields');
+const deliveryFields = document.getElementById('deliveryFields');
+
+const tableNo = document.getElementById('tableNo');
+const personsCount = document.getElementById('personsCount');
+
+const custName = document.getElementById('custName');
+const custMobile = document.getElementById('custMobile');
+const custLocation = document.getElementById('custLocation');
+const custAddress = document.getElementById('custAddress');
+const pickLocationBtn = document.getElementById('pickLocationBtn');
+const latInput = document.getElementById('lat');
+const lngInput = document.getElementById('lng');
+// ================= ORDER TYPE TOGGLE =================
+orderType.addEventListener('change', () => {
+  const isDining = orderType.value === 'dining';
+
+  diningFields.style.display = isDining ? 'block' : 'none';
+  deliveryFields.style.display = isDining ? 'none' : 'block';
+});
+
 
   if (!menuItemsDiv || !searchInput || !categoryFilter || !cartButton) return;
 
@@ -228,21 +251,93 @@ document.addEventListener('click', e => {
   // ---------------- WhatsApp Send ----------------
   sendOrderBtn.addEventListener('click', () => {
 
-    if (!cart.length) return;
+  if (!cart.length) return;
 
-    let msg = "Hello, I would like to place an order:\n\n";
-    let total = 0;
+  let msg = "Hello, I would like to place an order:\n\n";
 
-    cart.forEach(i => {
-      const t = i.price * i.qty;
-      total += t;
-      msg += `• ${i.name} x${i.qty} - ${t.toFixed(3)} BHD\n`;
-    });
+  const type = orderType.value;
 
-    msg += `\nTotal: ${total.toFixed(3)} BHD`;
+  // ===== Dining =====
+  if (type === 'dining') {
 
-    window.open(`https://wa.me/97366939332?text=${encodeURIComponent(msg)}`, '_blank');
+    const table = tableNo.value || '-';
+    const persons = personsCount.value || '-';
+
+    msg += `🍽️ Dining\nTable: ${table}\nPersons: ${persons}\n\n`;
+  }
+
+  // ===== Delivery =====
+  else {
+
+    const name = custName.value.trim();
+    const mobile = custMobile.value.trim();
+
+    if (!name || !mobile) {
+  alert("Please enter Name and Mobile");
+  return;
+}
+
+// require address OR GPS
+if (!custAddress.value.trim() && !latInput.value) {
+  alert("Please type address OR pick location from map");
+  return;
+}
+
+
+    msg += `🚚 Delivery\n`;
+    msg += `Name: ${name}\n`;
+    msg += `Mobile: ${mobile}\n`;
+    msg += `Location: ${custLocation.value}\n`;
+    msg += `Address: ${custAddress.value}\n`;
+
+if (latInput.value) {
+  msg += `Map: https://maps.google.com/?q=${latInput.value},${lngInput.value}\n`;
+}
+
+msg += "\n";
+
+  }
+
+  let total = 0;
+
+  cart.forEach(i => {
+    const t = i.price * i.qty;
+    total += t;
+    msg += `• ${i.name} x${i.qty} - ${t.toFixed(3)} BHD\n`;
   });
+
+  msg += `\nTotal: ${total.toFixed(3)} BHD`;
+
+  window.open(`https://wa.me/97366939332?text=${encodeURIComponent(msg)}`, '_blank');
+});
+// ================= GPS LOCATION PICKER =================
+pickLocationBtn?.addEventListener('click', () => {
+
+  if (!navigator.geolocation) {
+    alert("GPS not supported on this device");
+    return;
+  }
+
+  pickLocationBtn.innerText = "Getting location...";
+
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+
+    latInput.value = lat;
+    lngInput.value = lng;
+
+    // Auto fill simple address
+    custAddress.value = `Map Location Selected`;
+
+    pickLocationBtn.innerText = "📍 Location Selected ✓";
+
+  }, () => {
+    pickLocationBtn.innerText = "📍 Pick Location from Map";
+    alert("Location permission denied");
+  });
+});
 
 
   // ---------------- Start ----------------

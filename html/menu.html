@@ -39,6 +39,7 @@
   🛒 Cart (0)
 </button>
 <!-- Cart Modal -->
+<!-- Cart Modal -->
 <div class="modal fade" id="cartModal">
   <div class="modal-dialog modal-dialog-bottom modal-fullscreen-sm-down">
     <div class="modal-content">
@@ -49,9 +50,68 @@
       </div>
 
       <div class="modal-body">
+
+        <!-- ================= ORDER TYPE ================= -->
+        <div class="mb-3">
+          <label class="fw-bold mb-1">Order Type</label>
+          <select id="orderType" class="form-select">
+            <option value="dining">🍽️ Dining</option>
+            <option value="delivery">🚚 Delivery</option>
+          </select>
+        </div>
+
+
+        <!-- ================= DINING ================= -->
+        <div id="diningFields">
+          <div class="row g-2 mb-3">
+            <div class="col">
+              <input id="tableNo" type="number" class="form-control" placeholder="Table No">
+            </div>
+            <div class="col">
+              <input id="personsCount" type="number" class="form-control" placeholder="No of Persons">
+            </div>
+          </div>
+        </div>
+
+
+        <!-- ================= DELIVERY ================= -->
+        <div id="deliveryFields" style="display:none">
+
+          <input id="custName" class="form-control mb-2" placeholder="Customer Name">
+
+          <input id="custMobile" class="form-control mb-2" placeholder="Mobile Number">
+
+          <select id="custLocation" class="form-select mb-2">
+            <option value="">Select Location</option>
+            <option>Manama</option>
+            <option>Riffa</option>
+            <option>Muharraq</option>
+            <option>Isa Town</option>
+          </select>
+
+          <button id="pickLocationBtn" class="btn btn-outline-primary w-100 mb-2">
+  📍 Pick Location from Map
+</button>
+
+<textarea id="custAddress"
+  class="form-control mb-2"
+  placeholder="Building / Road / Block / Flat OR use map">
+</textarea>
+
+<input type="hidden" id="lat">
+<input type="hidden" id="lng">
+
+
+        </div>
+
+        <hr>
+
+        <!-- ================= CART ITEMS ================= -->
         <div id="cartItems"></div>
+
         <hr>
         <h5 class="text-end">Total: <span id="cartTotal">0.000</span> BHD</h5>
+
       </div>
 
       <div class="modal-footer">
@@ -63,6 +123,7 @@
     </div>
   </div>
 </div>
+
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/menu.js"></script>
