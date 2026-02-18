@@ -31,16 +31,15 @@ function isAdmin(req, res, next) {
 async function createTables() {
   try {
     await pool.query(`
-  CREATE TABLE IF NOT EXISTS items (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    category VARCHAR(100) NOT NULL,
-    price DECIMAL(10,3) NULL,
-    description TEXT,
-    image LONGBLOB,
-    vat_enabled TINYINT(1) NOT NULL DEFAULT 0
-  );
-`);
+      CREATE TABLE IF NOT EXISTS items (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        category VARCHAR(100) NOT NULL,
+        price DECIMAL(10,3) NULL,
+        description TEXT,
+        image LONGBLOB
+      );
+    `);
 
     // Table for extra prices
     await pool.query(`
@@ -83,6 +82,7 @@ app.get('/api/items', async (req, res) => {
     const items = [];
 
     for (let item of rows) {
+      // Fetch extra prices
       const [extraPrices] = await pool.query(
         'SELECT id, label, price FROM item_prices WHERE item_id=?',
         [item.id]
@@ -104,8 +104,7 @@ app.get('/api/items', async (req, res) => {
       items.push({
         ...rest,
         image_base64: imageBase64,
-        extra_prices: extraPrices,
-        vat_enabled: item.vat_enabled === 1 // boolean for frontend
+        extra_prices: extraPrices // new field
       });
     }
 
@@ -115,7 +114,6 @@ app.get('/api/items', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 // ---------------- ADD ITEM ----------------
 app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {

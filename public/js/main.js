@@ -6,8 +6,6 @@ const pagination = document.getElementById('pagination');
 const editModal = new bootstrap.Modal(document.getElementById('editModal'));
 const editItemForm = document.getElementById('editItemForm');
 const currentImageDiv = document.getElementById('currentImage');
-const editVatCheckbox = document.getElementById('editVatEnabled');
-
 // Multi-price elements
 const extraPricesList = document.getElementById('extraPricesList');
 const addExtraPriceBtn = document.getElementById('addExtraPriceBtn');
@@ -29,6 +27,7 @@ function addExtraPriceRow(label = '', price = '') {
 
 // Add new row on button click
 addExtraPriceBtn.addEventListener('click', () => addExtraPriceRow());
+
 
 let allItems = [];
 let currentPage = 1;
@@ -84,16 +83,17 @@ function renderTable() {
         <td>${item.name}</td>
         <td>${item.category}</td>
         <td>
-          ${
-            item.extra_prices && item.extra_prices.length > 0
-              ? item.extra_prices
-                  .map(p => `<strong>${p.label}</strong>: ${parseFloat(p.price).toFixed(3)} BHD`)
-                  .join('<br>')
-              : (item.price !== null && item.price !== undefined
-                  ? `${parseFloat(item.price).toFixed(3)} BHD`
-                  : '')
-          }
-        </td>
+  ${
+    item.extra_prices && item.extra_prices.length > 0
+      ? item.extra_prices
+          .map(p => `<strong>${p.label}</strong>: ${parseFloat(p.price).toFixed(3)} BHD`)
+          .join('<br>')
+      : (item.price !== null && item.price !== undefined
+          ? `${parseFloat(item.price).toFixed(3)} BHD`
+          : '')
+  }
+</td>
+
         <td>${item.description || ''}</td>
         <td>${item.image_base64 ? `<img src="${item.image_base64}" width="50">` : ''}</td>
         <td>
@@ -113,6 +113,7 @@ function renderTable() {
   }
 }
 
+
 function gotoPage(page){
   currentPage = page;
   renderTable();
@@ -126,8 +127,9 @@ categoryFilter.addEventListener('change', renderTable);
 async function deleteItem(id){
   if(!confirm('Are you sure?')) return;
   const res = await fetch(`/api/items/${id}`, { method: 'DELETE' });
-  if(res.ok) fetchItems();
+  if(res.ok) fetchItems();  // Refresh the table after deletion
 }
+
 
 // ---------------- EDIT ----------------
 async function openEditModal(id){
@@ -140,18 +142,14 @@ async function openEditModal(id){
   document.getElementById('editPrice').value = item.price;
   document.getElementById('editDescription').value = item.description || '';
   currentImageDiv.innerHTML = item.image_base64 ? `<img src="${item.image_base64}" width="100">` : '';
-
-  // VAT
-  editVatCheckbox.checked = item.vat_enabled ? true : false;
-
   // Clear previous extra prices
-  extraPricesList.innerHTML = '';
-  if (item.extra_prices && item.extra_prices.length > 0) {
-    item.extra_prices.forEach(p => addExtraPriceRow(p.label, p.price));
-  }
-
+extraPricesList.innerHTML = '';
+if (item.extra_prices && item.extra_prices.length > 0) {
+  item.extra_prices.forEach(p => addExtraPriceRow(p.label, p.price));
+}
   editModal.show();
 }
+
 
 editItemForm.addEventListener('submit', async e => {
   e.preventDefault();
@@ -162,35 +160,37 @@ editItemForm.addEventListener('submit', async e => {
   const mainPrice = document.getElementById('editPrice').value.trim();
   const labels = document.querySelectorAll('#extraPricesList .price-label');
   const values = document.querySelectorAll('#extraPricesList .price-value');
-  let hasExtraPrice = false;
+let hasExtraPrice = false;
 
+labels.forEach((input, idx) => {
+  const label = input.value.trim();
+  const price = values[idx].value.trim();
+  if (label && price) hasExtraPrice = true;
+});
+
+if (!mainPrice && !hasExtraPrice) {
+  alert('Please enter at least one price (main or extra)');
+  return;
+}
   labels.forEach((input, idx) => {
     const label = input.value.trim();
     const price = values[idx].value.trim();
-    if (label && price) hasExtraPrice = true;
     if(label && price) {
       formData.append('labels', label);
       formData.append('prices', price);
     }
   });
 
-  if (!mainPrice && !hasExtraPrice) {
-    alert('Please enter at least one price (main or extra)');
-    return;
-  }
-
-  // VAT
-  formData.append('vatEnabled', editVatCheckbox.checked ? '1' : '0');
-
   const res = await fetch(`/api/items/${id}`, { method: 'PUT', body: formData });
   if(res.ok){
     editModal.hide();
     fetchItems();  // Refresh the table after editing
   } else {
-    const err = await res.json();
-    alert(err.error || 'Failed to update item');
+    alert('Failed to update item');
   }
 });
+
+
 
 // ---------------- INITIAL LOAD ----------------
 fetchItems();
