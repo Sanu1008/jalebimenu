@@ -159,6 +159,56 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCartModal();
     cartModal.show();
   });
+function generateWhatsAppReceipt(orderType, cart, customer = {}) {
+  let msg = "🛍️ *New Customer Order*\n\n";
+
+  // ===== Order Type =====
+  if (orderType === 'dining') {
+    const table = customer.tableNo || '-';
+    const persons = customer.personsCount || '-';
+    msg += `🍽️ *Dining*\n`;
+    msg += `Table: ${table} | Persons: ${persons}\n\n`;
+  } else if (orderType === 'delivery') {
+    const name = customer.name || '-';
+    const mobile = customer.mobile || '-';
+    const address = customer.address || '-';
+    const lat = customer.lat || '';
+    const lng = customer.lng || '';
+
+    msg += `🚚 *Delivery*\n`;
+    msg += `*Name:* ${name}\n`;
+    msg += `*Mobile:* ${mobile}\n`;
+    msg += `*Address:* ${address}\n`;
+    if (lat && lng) msg += `📍 Map: https://maps.google.com/?q=${lat},${lng}\n`;
+    msg += `\n`;
+  }
+
+  // ===== Items =====
+  msg += "🛒 *Order Items*\n";
+  msg += "Item                     Qty   Price   Total\n";
+  msg += "-----------------------------------------\n";
+
+  let grandTotal = 0;
+  cart.forEach(i => {
+    const itemTotal = i.price * i.qty;
+    grandTotal += itemTotal;
+
+    // Aligning text roughly for WhatsApp monospace readability
+    let name = i.name.length > 20 ? i.name.substring(0, 17) + "..." : i.name;
+    let qty = i.qty.toString().padStart(3, ' ');
+    let price = i.price.toFixed(3).padStart(6, ' ');
+    let total = itemTotal.toFixed(3).padStart(6, ' ');
+
+    msg += `${name.padEnd(23, ' ')}${qty} ${price} ${total}\n`;
+  });
+
+  msg += "-----------------------------------------\n";
+  msg += `💰 *Grand Total:* ${grandTotal.toFixed(3)} BHD\n`;
+  msg += "\n📌 Please process this order promptly.";
+
+  return msg;
+}
+
 
   // ---------------- Render Cart ----------------
   function renderCartModal() {
@@ -199,50 +249,47 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ---------------- WhatsApp Send ----------------
-  sendOrderBtn.addEventListener('click', () => {
-    if (!cart.length) return;
+  
 
-    let msg = "Hello, I would like to place an order:\n\n";
-    const type = orderType.value;
+sendOrderBtn.addEventListener('click', () => {
+  if (!cart.length) return;
 
-    if (type === 'dining') {
-      const table = tableNo.value || '-';
-      const persons = personsCount.value || '-';
-      msg += `🍽️ Dining\nTable: ${table}\nPersons: ${persons}\n\n`;
-    } else {
-      const name = custName.value.trim();
-      const mobile = custMobile.value.trim();
-      const address = custAddress.value.trim();
+  const customerData = {
+    tableNo: tableNo.value,
+    personsCount: personsCount.value,
+    name: custName.value.trim(),
+    mobile: custMobile.value.trim(),
+    address: custAddress.value.trim(),
+    lat: latInput.value,
+    lng: lngInput.value
+  };
 
-      if (!name || !mobile) {
-        alert("Please enter Name and Mobile");
-        return;
-      }
-      if (!address && !latInput.value) {
-        alert("Please type address OR pick location");
-        return;
-      }
+  const message = generateWhatsAppMessage(orderType.value, cart, customerData);
+  window.open(`https://wa.me/97366939332?text=${encodeURIComponent(message)}`, '_blank');
 
-      msg += `🚚 Delivery\nName: ${name}\nMobile: ${mobile}\nAddress: ${address}\n`;
-
-      if (latInput.value) {
-        msg += `Map: https://maps.google.com/?q=${latInput.value},${lngInput.value}\n`;
-      }
-
-      msg += "\n";
-    }
-
-    let total = 0;
-    cart.forEach(i => {
-      const t = i.price * i.qty;
-      total += t;
-      msg += `• ${i.name} x${i.qty} - ${t.toFixed(3)} BHD\n`;
-    });
-
-    msg += `\nTotal: ${total.toFixed(3)} BHD`;
-
-    window.open(`https://wa.me/97366939332?text=${encodeURIComponent(msg)}`, '_blank');
-  });
+  // Close modal & reset everything
+  cartModal.hide();
+  cart = [];
+  updateCartButton();
+  document.querySelectorAll('.qty-badge').forEach(b => b.textContent = '0');
+  tableNo.value = '';
+  personsCount.value = '';
+  custName.value = '';
+  custMobile.value = '';
+  custAddress.value = '';
+  latInput.value = '';
+  lngInput.value = '';
+  autoAddressBtn.innerText = "📍 Auto Detect Address";
+  orderType.value = 'dining';
+  diningFields.style.display = 'block';
+  deliveryFields.style.display = 'none';
+  categoryFilter.value = '';
+  searchInput.value = '';
+  searchInput.dispatchEvent(new Event('input'));
+  menuItemsDiv.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  searchInput.focus();
+});
 
   // ================= GPS / AUTO DETECT ADDRESS =================
   autoAddressBtn?.addEventListener('click', () => {
