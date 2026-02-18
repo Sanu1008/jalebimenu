@@ -264,7 +264,7 @@ sendOrderBtn.addEventListener('click', () => {
     lng: lngInput.value
   };
 
-  const message = generateWhatsAppMessage(orderType.value, cart, customerData);
+  const message = generateWhatsAppReceipt(orderType.value, cart, customerData);
   window.open(`https://wa.me/97366939332?text=${encodeURIComponent(message)}`, '_blank');
 
   // Close modal & reset everything
