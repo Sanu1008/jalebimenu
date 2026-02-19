@@ -463,11 +463,11 @@ function updateCartButton() {
   const itemObj = allItems.find(it => it.id == i.key.split('-')[0]);
   const vatEnabled = itemObj?.vatEnabled;
 
-  let price = i.price; // base price
-let vatAmount = 0;
-if (vatEnabled) vatAmount = price * 0.10;
-const itemTotal = (price + vatAmount) * i.qty;
+  let price = i.price; // already VAT INCLUDED
+
+const itemTotal = price * i.qty; // ⭐ DO NOT add VAT again
 grandTotal += itemTotal;
+
 
   let name = i.name;
   if (i.variant) name += ` (${i.variant})`;
