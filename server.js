@@ -37,7 +37,8 @@ async function createTables() {
         price DECIMAL(10,3) NULL,
         description TEXT,
         image LONGBLOB,
-        vat_enabled TINYINT(1) DEFAULT 0
+        vat_enabled TINYINT(1) DEFAULT 0,
+        is_active TINYINT(1) DEFAULT 1
       );
     `);
 
@@ -104,14 +105,17 @@ app.get('/api/items', async (req, res) => {
 // ---------------- ADD ITEM ----------------
 app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
   try {
-    const { name, category, price, description } = req.body;
-    const vatValue = req.body.vatEnabled ? 1 : 0; // ✅ FIX
+   const { name, category, price, description } = req.body;
+const vatValue = req.body.vatEnabled ? 1 : 0;
+const activeValue = req.body.isActive ? 1 : 0;   // ⭐ ADD
+
     const priceValue = price && price.trim() !== '' ? parseFloat(price) : null;
     const imageData = req.file ? req.file.buffer : null;
 
     const [result] = await pool.query(
-      'INSERT INTO items (name, category, price, description, image, vat_enabled) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, category, priceValue, description, imageData, vatValue]
+      'INSERT INTO items (name, category, price, description, image, vat_enabled, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [name, category, priceValue, description, imageData, vatValue, activeValue]
+
     );
 
     const itemId = result.insertId;
@@ -140,12 +144,13 @@ app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
 app.put('/api/items/:id', isAdmin, upload.single('image'), async (req, res) => {
   try {
     const { name, category, price, description } = req.body;
-    const vatValue = req.body.vatEnabled ? 1 : 0; // ✅ FIX
+    const vatValue = req.body.vatEnabled ? 1 : 0;
+const activeValue = req.body.isActive ? 1 : 0;   // ⭐ ADD
     const priceValue = price && price.trim() !== '' ? parseFloat(price) : null;
     const id = req.params.id;
 
-    let sql = 'UPDATE items SET name=?, category=?, price=?, description=?, vat_enabled=?';
-    const params = [name, category, priceValue, description, vatValue];
+    let sql = 'UPDATE items SET name=?, category=?, price=?, description=?, vat_enabled=?, is_active=?';
+const params = [name, category, priceValue, description, vatValue, activeValue];
     if (req.file) { sql += ', image=?'; params.push(req.file.buffer); }
     sql += ' WHERE id=?'; params.push(id);
     await pool.query(sql, params);

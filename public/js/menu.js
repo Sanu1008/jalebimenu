@@ -42,7 +42,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const res = await fetch('/api/items');
     const data = await res.json();
 
-    allItems = data.map(i => ({
+    allItems = data
+  .filter(i => i.is_active == 1)
+  .map(i => ({
+
   ...i,
   price: i.price !== null ? Number(i.price) : null,
   vatEnabled: i.vat_enabled == 1,   // ⭐ IMPORTANT FIX
@@ -467,7 +470,6 @@ function updateCartButton() {
 
 const itemTotal = price * i.qty; // ⭐ DO NOT add VAT again
 grandTotal += itemTotal;
-
 
   let name = i.name;
   if (i.variant) name += ` (${i.variant})`;

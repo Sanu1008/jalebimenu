@@ -6,6 +6,7 @@ const toastEl = document.getElementById('toast');
 const toast = toastEl ? new bootstrap.Toast(toastEl) : null;
 const mainPriceInput = createItemForm.querySelector('input[name="price"]');
 const vatCheckbox = createItemForm.querySelector('input[name="vatEnabled"]');
+const activeCheckbox = createItemForm.querySelector('input[name="isActive"]');
 const itemImage = document.getElementById('itemImage');
 
 // Image preview
@@ -50,7 +51,7 @@ createItemForm.addEventListener('submit', async e => {
     }
   });
   formData.append('vatEnabled', vatCheckbox.checked ? '1' : '0');
-
+formData.append('isActive', activeCheckbox.checked ? '1' : '0');
   const itemId = createItemForm.dataset.itemId;
   const url = itemId ? `/api/items/${itemId}` : '/api/items';
   const method = itemId ? 'PUT' : 'POST';
