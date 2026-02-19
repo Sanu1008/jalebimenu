@@ -132,6 +132,7 @@ async function deleteItem(id){
 
 
 // ---------------- EDIT ----------------
+// ---------------- EDIT ----------------
 async function openEditModal(id){
   const item = allItems.find(i => i.id === id);
   if(!item) return;
@@ -141,40 +142,52 @@ async function openEditModal(id){
   document.getElementById('editCategory').value = item.category;
   document.getElementById('editPrice').value = item.price;
   document.getElementById('editDescription').value = item.description || '';
+
   // Pre-fill VAT checkbox
-const vatCheckbox = document.getElementById('editVatEnabled');
-vatCheckbox.checked = item.vat_enabled === 1; // assumes backend sends 0 or 1
+  const vatCheckbox = document.getElementById('editVatEnabled');
+  vatCheckbox.checked = item.vat_enabled === 1;
+
+  // Pre-fill Active checkbox
+  const activeCheckbox = document.getElementById('editIsActive');
+  activeCheckbox.checked = item.is_active === 1;  
+
   currentImageDiv.innerHTML = item.image_base64 ? `<img src="${item.image_base64}" width="100">` : '';
+
   // Clear previous extra prices
-extraPricesList.innerHTML = '';
-if (item.extra_prices && item.extra_prices.length > 0) {
-  item.extra_prices.forEach(p => addExtraPriceRow(p.label, p.price));
-}
+  extraPricesList.innerHTML = '';
+  if (item.extra_prices && item.extra_prices.length > 0) {
+    item.extra_prices.forEach(p => addExtraPriceRow(p.label, p.price));
+  }
+
   editModal.show();
 }
-
 
 editItemForm.addEventListener('submit', async e => {
   e.preventDefault();
   const formData = new FormData(editItemForm);
   const id = document.getElementById('editId').value;
 
+  // ---------------- ADD ACTIVE STATE ----------------
+  const isActive = document.getElementById('editIsActive').checked;
+  formData.append('isActive', isActive ? '1' : '0');
+
   // ---------------- COLLECT EXTRA PRICES ----------------
   const mainPrice = document.getElementById('editPrice').value.trim();
   const labels = document.querySelectorAll('#extraPricesList .price-label');
   const values = document.querySelectorAll('#extraPricesList .price-value');
-let hasExtraPrice = false;
+  let hasExtraPrice = false;
 
-labels.forEach((input, idx) => {
-  const label = input.value.trim();
-  const price = values[idx].value.trim();
-  if (label && price) hasExtraPrice = true;
-});
+  labels.forEach((input, idx) => {
+    const label = input.value.trim();
+    const price = values[idx].value.trim();
+    if (label && price) hasExtraPrice = true;
+  });
 
-if (!mainPrice && !hasExtraPrice) {
-  alert('Please enter at least one price (main or extra)');
-  return;
-}
+  if (!mainPrice && !hasExtraPrice) {
+    alert('Please enter at least one price (main or extra)');
+    return;
+  }
+
   labels.forEach((input, idx) => {
     const label = input.value.trim();
     const price = values[idx].value.trim();
@@ -192,7 +205,6 @@ if (!mainPrice && !hasExtraPrice) {
     alert('Failed to update item');
   }
 });
-
 
 
 // ---------------- INITIAL LOAD ----------------
