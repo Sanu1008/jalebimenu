@@ -306,33 +306,42 @@ function updateCartButton() {
   // ---------------- Render Cart Modal ----------------
   function renderCartModal() {
   cartItemsDiv.innerHTML = '';
+
   let total = 0;
   let totalVAT = 0;
 
   cart.forEach((item, index) => {
+
     const itemObj = allItems.find(i => i.id == item.key.split('-')[0]);
     const vatEnabled = itemObj?.vatEnabled;
 
-    const price = item.price; // already VAT included if vatEnabled
-    const qty = item.qty;
+    const price = item.price; // ⭐ already VAT INCLUDED
+
     let vatAmount = 0;
     let netPrice = price;
 
     if (vatEnabled) {
-      vatAmount = price * 0.10 / 1.10; // 10% VAT included in price
+      vatAmount = price * 0.10 / 1.10;   // ⭐ back calculate
       netPrice = price - vatAmount;
     }
 
-    const itemTotal = price * qty;
+    const itemTotal = price * item.qty;
+
     total += itemTotal;
-    totalVAT += vatAmount * qty;
+    totalVAT += vatAmount * item.qty;
 
     cartItemsDiv.innerHTML += `
       <div class="d-flex justify-content-between align-items-center mb-2">
         <div>
           <b>${item.name}${item.variant ? ' (' + item.variant + ')' : ''}</b><br>
-          <small>${price.toFixed(3)} BHD${vatEnabled ? ` (VAT ${vatAmount.toFixed(3)} included)` : ''}</small>
+
+          <small>
+            Net: ${netPrice.toFixed(3)} | 
+            VAT: ${vatAmount.toFixed(3)} | 
+            Total: <b>${price.toFixed(3)} BHD</b>
+          </small>
         </div>
+
         <div>
           <button class="btn btn-sm btn-outline-secondary cart-minus" data-i="${index}">-</button>
           <span class="mx-2">${item.qty}</span>
@@ -343,16 +352,12 @@ function updateCartButton() {
     `;
   });
 
+  document.getElementById('cartVAT').textContent =
+    `Total VAT: ${totalVAT.toFixed(3)} BHD`;
+
   cartTotalSpan.textContent = total.toFixed(3);
-  // Optional: Show total VAT
-  if (!document.getElementById('cartVAT')) {
-    const vatDiv = document.createElement('div');
-    vatDiv.id = 'cartVAT';
-    vatDiv.className = 'text-end small text-muted mb-2';
-    cartItemsDiv.parentNode.insertBefore(vatDiv, cartTotalSpan.parentNode);
-  }
-  document.getElementById('cartVAT').textContent = `Total VAT: ${totalVAT.toFixed(3)} BHD`;
 }
+
 
 
   // ---------------- Modal Qty / Remove ----------------
