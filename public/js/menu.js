@@ -43,10 +43,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = await res.json();
 
     allItems = data.map(i => ({
-      ...i,
-      price: i.price !== null ? Number(i.price) : null,
-      image_base64: i.image_base64 || ''
-    }));
+  ...i,
+  price: i.price !== null ? Number(i.price) : null,
+  vatEnabled: i.vat_enabled == 1,   // ⭐ IMPORTANT FIX
+  image_base64: i.image_base64 || ''
+}));
+
 
     populateCategoryFilter();
     renderItems(allItems);
@@ -109,33 +111,37 @@ function renderItems(items) {
 // ---------------- Update Cart Modal ----------------
 function renderCartModal() {
   cartItemsDiv.innerHTML = '';
+
   let total = 0;
   let totalVAT = 0;
 
   cart.forEach((item, index) => {
     const itemObj = allItems.find(i => i.id == item.key.split('-')[0]);
+
     const vatEnabled = itemObj?.vatEnabled;
 
-    const basePrice = item.price; // price WITHOUT VAT
-    const qty = item.qty;
-
+    const basePrice = item.price;
     let vatAmount = 0;
     let finalPrice = basePrice;
 
     if (vatEnabled) {
-      vatAmount = basePrice * 0.10; // 10% VAT
+      vatAmount = basePrice * 0.10;   // 10% VAT
       finalPrice = basePrice + vatAmount;
     }
 
-    const itemTotal = finalPrice * qty;
+    const itemTotal = finalPrice * item.qty;
+
     total += itemTotal;
-    totalVAT += vatAmount * qty;
+    totalVAT += vatAmount * item.qty;
 
     cartItemsDiv.innerHTML += `
       <div class="d-flex justify-content-between align-items-center mb-2">
         <div>
           <b>${item.name}${item.variant ? ' (' + item.variant + ')' : ''}</b><br>
-          <small>${finalPrice.toFixed(3)} BHD${vatEnabled ? ` (VAT ${vatAmount.toFixed(3)})` : ''}</small>
+          <small>
+            ${basePrice.toFixed(3)} + VAT ${vatAmount.toFixed(3)} = 
+            <b>${finalPrice.toFixed(3)} BHD</b>
+          </small>
         </div>
         <div>
           <button class="btn btn-sm btn-outline-secondary cart-minus" data-i="${index}">-</button>
@@ -149,15 +155,10 @@ function renderCartModal() {
 
   cartTotalSpan.textContent = total.toFixed(3);
 
-  // Show total VAT
-  if (!document.getElementById('cartVAT')) {
-    const vatDiv = document.createElement('div');
-    vatDiv.id = 'cartVAT';
-    vatDiv.className = 'text-end small text-muted mb-2';
-    cartItemsDiv.parentNode.insertBefore(vatDiv, cartTotalSpan.parentNode);
-  }
-  document.getElementById('cartVAT').textContent = `Total VAT: ${totalVAT.toFixed(3)} BHD`;
+  document.getElementById('cartVAT').textContent =
+    `Total VAT: ${totalVAT.toFixed(3)} BHD`;
 }
+
 
 
 
