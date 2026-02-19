@@ -68,7 +68,7 @@ function renderItems(items) {
     let priceOptions = '';
     if (item.price !== null && item.price > 0) {
   const mainPrice = Number(item.price);
-  const priceWithVAT = item.vatEnabled ? (mainPrice * 1.05).toFixed(3) : mainPrice.toFixed(3);
+  const priceWithVAT = mainPrice.toFixed(3); // already included
   priceOptions += `<option value="${mainPrice}">${priceWithVAT} BHD ${item.vatEnabled ? '(VAT)' : ''}</option>`;
 }
 
@@ -76,7 +76,7 @@ function renderItems(items) {
   item.extra_prices.forEach(p => {
     const priceNum = Number(p.price); // convert to number
     if (!isNaN(priceNum)) {
-      const priceWithVAT = item.vatEnabled ? (priceNum * 1.05).toFixed(3) : priceNum.toFixed(3);
+      const priceWithVAT = priceNum.toFixed(3);
       priceOptions += `<option value="${priceNum}">${p.label} - ${priceWithVAT} BHD ${item.vatEnabled ? '(VAT)' : ''}</option>`;
     }
   });
