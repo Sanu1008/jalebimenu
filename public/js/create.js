@@ -46,7 +46,7 @@ async function loadCategories() {
     if (!res.ok) throw new Error('Failed to fetch categories');
 
     const data = await res.json();
-    console.log('Categories loaded:', data); // 🔍 debug
+    console.log('Categories loadedaaaa:', data); // 🔍 debug
 
     categorySelect.innerHTML = '<option disabled selected>Select Category</option>';
 
@@ -54,7 +54,8 @@ async function loadCategories() {
       categorySelect.innerHTML += '<option disabled>No categories found</option>';
     } else {
       data.forEach(c => {
-        categorySelect.innerHTML += `<option value="${c.name}">${c.name}</option>`;
+        // Use category ID as value, name as display
+        categorySelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
       });
     }
 
