@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
       price: i.price !== null ? Number(i.price) : null,
       vatEnabled: i.vat_enabled == 1,
       image_base64: i.image_base64 || '',
-      stock: Infinity
+      stock: i.quantity === null ? Infinity : Number(i.quantity)
     }));
 
   populateCategoryFilter();

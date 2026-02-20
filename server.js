@@ -152,7 +152,7 @@ app.get('/api/items', async (req, res) => {
       }
 
       const { image, ...rest } = item;
-      items.push({ ...rest, image_base64: imageBase64, extra_prices: extraPrices });
+      items.push({ ...rest, quantity: item.quantity,image_base64: imageBase64, extra_prices: extraPrices });
     }
 
     res.json(items);
