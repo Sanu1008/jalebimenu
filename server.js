@@ -129,41 +129,31 @@ app.get('/api/client/logout', (req, res) => {
 
 app.post('/api/orders/whatsapp', async (req, res) => {
   const { clientId, items } = req.body;
-  // items = [{ id: 1, qty: 2 }, { id: 5, qty: 1 }]
 
-  const conn = await db.getConnection();
-
+  const conn = await pool.getConnection(); // ✅ use pool
   try {
     await conn.beginTransaction();
 
     for (const item of items) {
-      // Check current stock
       const [rows] = await conn.query(
-        `SELECT quantity FROM items 
-         WHERE id=? AND client_id=? FOR UPDATE`,
+        `SELECT quantity FROM items WHERE id=? AND client_id=? FOR UPDATE`,
         [item.id, clientId]
       );
 
       if (!rows.length) throw new Error('Item not found');
 
       const current = rows[0].quantity;
-
-      // unlimited stock
       if (current !== null) {
-        if (current < item.qty)
-          throw new Error('Not enough stock');
+        if (current < item.qty) throw new Error('Not enough stock');
 
         await conn.query(
-          `UPDATE items 
-           SET quantity = quantity - ?
-           WHERE id=? AND client_id=?`,
+          `UPDATE items SET quantity = quantity - ? WHERE id=? AND client_id=?`,
           [item.qty, item.id, clientId]
         );
       }
     }
 
     await conn.commit();
-
     res.json({ success: true });
 
   } catch (err) {
