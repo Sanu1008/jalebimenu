@@ -384,6 +384,9 @@ app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'html/dash
 app.get('/menu', (req, res) => res.sendFile(path.join(__dirname, 'html/menu.html')));
 app.get('/categories', (req, res) => res.sendFile(path.join(__dirname, 'html/category-master.html')));
 app.get('/categories.html', (req, res) => res.redirect('/categories'));
-
+// ---------------- MENU WITH CLIENT ID ----------------
+app.get('/menu/:id', (req, res) => {
+  res.sendFile(path.join(__dirname, 'html/menu.html'));
+});
 // ---------------- Start Server ----------------
 app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
