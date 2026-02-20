@@ -357,6 +357,7 @@ app.put('/api/items/:id', upload.single('image'), async (req, res) => {
     const vatValue = req.body.vatEnabled ? 1 : 0;
     const activeValue = req.body.isActive ? 1 : 0;
     const priceValue = price && price.trim() !== '' ? parseFloat(price) : null;
+   const quantityValue = req.body.quantity ? parseInt(req.body.quantity) : null;
     const id = req.params.id;
 
     // Check ownership if client
@@ -367,11 +368,11 @@ app.put('/api/items/:id', upload.single('image'), async (req, res) => {
       }
     }
 
-    let sql = 'UPDATE items SET name=?, category=?, price=?, description=?, vat_enabled=?, is_active=?';
-    const params = [name, category, priceValue, description, vatValue, activeValue];
-    if (req.file) { sql += ', image=?'; params.push(req.file.buffer); }
-    sql += ' WHERE id=?'; params.push(id);
-    await pool.query(sql, params);
+    let sql = 'UPDATE items SET name=?, category=?, price=?, description=?, vat_enabled=?, is_active=?, quantity=?';
+const params = [name, category, priceValue, description, vatValue, activeValue, quantityValue];
+if (req.file) { sql += ', image=?'; params.push(req.file.buffer); }
+sql += ' WHERE id=?'; params.push(id);
+await pool.query(sql, params);
 
     // Reset extra prices
     await pool.query('DELETE FROM item_prices WHERE item_id=?', [id]);

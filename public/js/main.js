@@ -198,6 +198,7 @@ async function openEditModal(id){
   document.getElementById('editId').value = item.id;
   document.getElementById('editName').value = item.name;
   document.getElementById('editPrice').value = item.price;
+  document.getElementById('editQuantity').value = item.quantity !== null ? item.quantity : '';
   document.getElementById('editDescription').value = item.description || '';
 
   await loadEditCategories(item.category); // ⭐ NEW
@@ -249,7 +250,8 @@ editItemForm.addEventListener('submit', async e => {
       formData.append('prices', price);
     }
   });
-
+const quantity = document.getElementById('editQuantity').value.trim();
+if (quantity !== '') formData.append('quantity', quantity);
   const res = await fetch(`/api/items/${id}`, { method: 'PUT', body: formData });
 
   if(res.ok){
