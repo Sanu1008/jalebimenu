@@ -419,21 +419,55 @@ function updateCartButton() {
   });
 
   // ---------------- WhatsApp Send ----------------
-  sendOrderBtn.addEventListener('click', () => {
-    if (!cart.length) return;
-// ================= VALIDATION =================
+  sendOrderBtn.addEventListener('click', async () => {
+
+  if (!cart.length) return;
+
+  // ================= VALIDATION =================
   if (orderType.value === 'dining') {
     if (!tableNo.value.trim() || !personsCount.value.trim()) {
       alert("Please enter Table No and Number of Persons for Dining orders.");
-      return; // stop sending
+      return;
     }
   }
+
   if (orderType.value === 'delivery') {
     if (!custName.value.trim() || !custMobile.value.trim() || !custAddress.value.trim()) {
       alert("Please fill Customer Name, Mobile, and Address for Delivery orders.");
       return;
     }
   }
+
+  // ⭐ get clientId from URL
+  const pathParts = window.location.pathname.split('/');
+  const clientId = pathParts[2];
+
+  // ⭐ prepare items for server
+  const apiItems = cart.map(c => ({
+    id: c.key.split('-')[0],
+    qty: c.qty
+  }));
+
+  try {
+
+    // ================= CALL SERVER FIRST =================
+    const res = await fetch('/api/orders/whatsapp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId,
+        items: apiItems
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || 'Stock not available');
+      return;
+    }
+
+    // ================= AFTER SUCCESS → OPEN WHATSAPP =================
     const customerData = {
       tableNo: tableNo.value,
       personsCount: personsCount.value,
@@ -445,31 +479,27 @@ function updateCartButton() {
     };
 
     const message = generateWhatsAppReceipt(orderType.value, cart, customerData);
-    window.open(`https://wa.me/97366939332?text=${encodeURIComponent(message)}`, '_blank');
 
-    // Reset everything
+    window.open(
+      `https://wa.me/97366939332?text=${encodeURIComponent(message)}`,
+      '_blank'
+    );
+
+    // ================= RESET =================
     cartModal.hide();
     cart = [];
     updateCartButton();
+
     document.querySelectorAll('.qty-badge').forEach(b => b.textContent = '0');
-    tableNo.value = '';
-    personsCount.value = '';
-    custName.value = '';
-    custMobile.value = '';
-    custAddress.value = '';
-    latInput.value = '';
-    lngInput.value = '';
-    autoAddressBtn.innerText = "📍 Auto Detect Address";
-    orderType.value = 'dining';
-    diningFields.style.display = 'block';
-    deliveryFields.style.display = 'none';
-    categoryFilter.value = '';
-    searchInput.value = '';
-    searchInput.dispatchEvent(new Event('input'));
-    menuItemsDiv.scrollTo({ top: 0, behavior: 'smooth' });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    searchInput.focus();
-  });
+
+    // ⭐ IMPORTANT → reload latest stock from DB
+    fetchMenuItems();
+
+  } catch (err) {
+    alert('Server error');
+  }
+
+});
 
   // ---------------- WhatsApp Receipt ----------------
   function generateWhatsAppReceipt(orderType, cart, customer = {}) {
