@@ -40,33 +40,34 @@ addExtraPriceBtn.addEventListener('click', () => addExtraPriceRow());
 // ===============================
 async function loadCategories() {
   try {
-    const res = await fetch('/api/categories');
+    const res = await fetch('/api/categories', {
+      credentials: 'include'  // ✅ make sure cookies/session sent
+    });
     if (!res.ok) throw new Error('Failed to fetch categories');
 
     const data = await res.json();
+    console.log('Categories loaded:', data); // 🔍 debug
 
-    // Start with default option
     categorySelect.innerHTML = '<option disabled selected>Select Category</option>';
 
-    if (data.length === 0) {
+    if (!data || data.length === 0) {
       categorySelect.innerHTML += '<option disabled>No categories found</option>';
     } else {
-      // Add categories by name only
       data.forEach(c => {
         categorySelect.innerHTML += `<option value="${c.name}">${c.name}</option>`;
       });
     }
 
-    // Divider + Add new
     categorySelect.innerHTML += `
       <option disabled>──────────</option>
       <option value="__add_new__">➕ Add New Category</option>
     `;
-  } catch(err) {
+  } catch (err) {
     console.error('Error loading categories:', err);
     categorySelect.innerHTML = '<option disabled selected>Error loading categories</option>';
   }
 }
+
 
 
 // Show modal when add new clicked
