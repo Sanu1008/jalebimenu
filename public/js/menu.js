@@ -39,24 +39,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---------------- Fetch menu items ----------------
   async function fetchMenuItems() {
-    const clientId = window.location.pathname.split('/').pop();
-    const res = await fetch(`/api/menu/id/${clientId}`);
-    const data = await res.json();
 
-    allItems = data
-  .filter(i => i.is_active == 1)
-  .map(i => ({
-  ...i,
-  price: i.price !== null ? Number(i.price) : null,
-  vatEnabled: i.vat_enabled == 1,
-  image_base64: i.image_base64 || '',
-  stock: i.qty_available === null ? Infinity : Number(i.qty_available) // ⭐ NEW
-}));
+  const pathParts = window.location.pathname.split('/');
+  const clientId = pathParts.length > 2 ? pathParts[2] : null;
 
+  let url = '/api/menu';
 
-    populateCategoryFilter();
-    renderItems(allItems);
+  if (clientId && !isNaN(clientId)) {
+    url += '/' + clientId;
   }
+
+  const res = await fetch(url);
+  const data = await res.json();
+
+  allItems = data
+    .filter(i => i.is_active == 1)
+    .map(i => ({
+      ...i,
+      price: i.price !== null ? Number(i.price) : null,
+      vatEnabled: i.vat_enabled == 1,
+      image_base64: i.image_base64 || '',
+      stock: Infinity
+    }));
+
+  populateCategoryFilter();
+  renderItems(allItems);
+}
 
   // ---------------- Categories ----------------
   function populateCategoryFilter() {

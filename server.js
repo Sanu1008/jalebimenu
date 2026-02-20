@@ -163,14 +163,21 @@ app.get('/api/items', async (req, res) => {
 
 // ---------------- PUBLIC MENU (CLIENT ID WISE) ----------------
 // Anyone (customer) can view menu using client id
-app.get('/api/menu/id/:id', async (req, res) => {
+app.get('/api/menu/:id?', async (req, res) => {
   try {
     const clientId = req.params.id;
 
-    const [rows] = await pool.query(
-      'SELECT * FROM items WHERE client_id=? AND is_active=1 ORDER BY category, name',
-      [clientId]
-    );
+    let sql = 'SELECT * FROM items WHERE is_active=1';
+    let params = [];
+
+    if (clientId && !isNaN(clientId)) {
+      sql += ' AND client_id=?';
+      params.push(clientId);
+    }
+
+    sql += ' ORDER BY category, name';
+
+    const [rows] = await pool.query(sql, params);
 
     const items = [];
 
@@ -182,8 +189,11 @@ app.get('/api/menu/id/:id', async (req, res) => {
 
       let imageBase64 = '';
       if (item.image) {
-        const buffer = Buffer.isBuffer(item.image) ? item.image : Buffer.from(item.image, 'binary');
-        const mimeType = buffer[0] === 0x89 ? 'image/png' : 'image/jpeg';
+        const buffer = Buffer.isBuffer(item.image)
+          ? item.image
+          : Buffer.from(item.image, 'binary');
+        const mimeType =
+          buffer[0] === 0x89 ? 'image/png' : 'image/jpeg';
         imageBase64 = `data:${mimeType};base64,${buffer.toString('base64')}`;
       }
 
