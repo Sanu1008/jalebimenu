@@ -74,8 +74,10 @@ async function createTables() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS categories (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(150) NOT NULL UNIQUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        client_id INT NULL,
+        name VARCHAR(150) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
       );
     `);
 
@@ -126,8 +128,6 @@ app.get('/api/client/logout', (req, res) => {
 });
 
 // ---------------- GET ITEMS ----------------
-// Admin: all items
-// Client: only own items
 app.get('/api/items', async (req, res) => {
   try {
     let sql = 'SELECT * FROM items';
@@ -161,18 +161,19 @@ app.get('/api/items', async (req, res) => {
 });
 
 // ---------------- ADD ITEM ----------------
-app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
+app.post('/api/items', upload.single('image'), async (req, res) => {
   try {
     const { name, category, price, description, clientId } = req.body;
     const vatValue = req.body.vatEnabled ? 1 : 0;
     const activeValue = req.body.isActive ? 1 : 0;
-
     const priceValue = price && price.trim() !== '' ? parseFloat(price) : null;
     const imageData = req.file ? req.file.buffer : null;
 
+    const clientIdFinal = req.session.clientId || clientId || null; // client or admin
+
     const [result] = await pool.query(
       'INSERT INTO items (client_id, name, category, price, description, image, vat_enabled, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [clientId || null, name, category, priceValue, description, imageData, vatValue, activeValue]
+      [clientIdFinal, name, category, priceValue, description, imageData, vatValue, activeValue]
     );
 
     const itemId = result.insertId;
@@ -195,13 +196,21 @@ app.post('/api/items', isAdmin, upload.single('image'), async (req, res) => {
 });
 
 // ---------------- UPDATE ITEM ----------------
-app.put('/api/items/:id', isAdmin, upload.single('image'), async (req, res) => {
+app.put('/api/items/:id', upload.single('image'), async (req, res) => {
   try {
     const { name, category, price, description } = req.body;
     const vatValue = req.body.vatEnabled ? 1 : 0;
     const activeValue = req.body.isActive ? 1 : 0;
     const priceValue = price && price.trim() !== '' ? parseFloat(price) : null;
     const id = req.params.id;
+
+    // Check ownership if client
+    if (req.session.clientId) {
+      const [rows] = await pool.query('SELECT client_id FROM items WHERE id=?', [id]);
+      if (!rows.length || rows[0].client_id !== req.session.clientId) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+    }
 
     let sql = 'UPDATE items SET name=?, category=?, price=?, description=?, vat_enabled=?, is_active=?';
     const params = [name, category, priceValue, description, vatValue, activeValue];
@@ -211,7 +220,7 @@ app.put('/api/items/:id', isAdmin, upload.single('image'), async (req, res) => {
 
     // Reset extra prices
     await pool.query('DELETE FROM item_prices WHERE item_id=?', [id]);
-    let labels = req.body.labels || []; 
+    let labels = req.body.labels || [];
     let values = req.body.prices || [];
     if (!Array.isArray(labels)) labels = [labels];
     if (!Array.isArray(values)) values = [values];
@@ -228,9 +237,18 @@ app.put('/api/items/:id', isAdmin, upload.single('image'), async (req, res) => {
 });
 
 // ---------------- DELETE ITEM ----------------
-app.delete('/api/items/:id', isAdmin, async (req, res) => {
+app.delete('/api/items/:id', async (req, res) => {
   try {
     const id = req.params.id;
+
+    // Check ownership if client
+    if (req.session.clientId) {
+      const [rows] = await pool.query('SELECT client_id FROM items WHERE id=?', [id]);
+      if (!rows.length || rows[0].client_id !== req.session.clientId) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+    }
+
     await pool.query('DELETE FROM items WHERE id=?', [id]);
     res.json({ success: true });
   } catch (err) {
@@ -241,26 +259,43 @@ app.delete('/api/items/:id', isAdmin, async (req, res) => {
 // ---------------- CATEGORY MASTER ----------------
 app.get('/api/categories', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM categories ORDER BY name');
+    let sql = 'SELECT * FROM categories';
+    let params = [];
+    if(req.session.clientId){
+      sql += ' WHERE client_id=?';
+      params.push(req.session.clientId);
+    }
+    sql += ' ORDER BY name';
+    const [rows] = await pool.query(sql, params);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/categories', isAdmin, async (req, res) => {
+app.post('/api/categories', async (req, res) => {
   try {
     const { name } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Category name required' });
-    await pool.query('INSERT INTO categories (name) VALUES (?)', [name.trim()]);
+
+    const clientIdFinal = req.session.clientId || null; // admin can leave null
+    await pool.query('INSERT INTO categories (name, client_id) VALUES (?, ?)', [name.trim(), clientIdFinal]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete('/api/categories/:id', isAdmin, async (req, res) => {
+app.delete('/api/categories/:id', async (req, res) => {
   try {
+    // Check ownership if client
+    if(req.session.clientId) {
+      const [rows] = await pool.query('SELECT client_id FROM categories WHERE id=?', [req.params.id]);
+      if(!rows.length || rows[0].client_id !== req.session.clientId){
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+    }
+
     await pool.query('DELETE FROM categories WHERE id=?', [req.params.id]);
     res.json({ success: true });
   } catch (err) {
