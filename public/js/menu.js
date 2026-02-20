@@ -39,7 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---------------- Fetch menu items ----------------
   async function fetchMenuItems() {
-    const res = await fetch('/api/items');
+    const clientId = window.location.pathname.split('/').pop();
+    const res = await fetch(`/api/menu/id/${clientId}`);
     const data = await res.json();
 
     allItems = data
