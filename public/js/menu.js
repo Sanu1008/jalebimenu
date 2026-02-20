@@ -173,9 +173,6 @@ function renderCartModal() {
     `Total VAT: ${totalVAT.toFixed(3)} BHD`;
 }
 
-
-
-
 // ---------------- WhatsApp Receipt ----------------
 function generateWhatsAppReceipt(orderType, cart, customer = {}) {
   let msg = "🛍️ *New Customer Order*\n\n";
@@ -419,7 +416,8 @@ function updateCartButton() {
   });
 
   // ---------------- WhatsApp Send ----------------
-  sendOrderBtn.addEventListener('click', async () => {
+  sendOrderBtn.addEventListener('click', async (e) => {
+  e.preventDefault();
 
   if (!cart.length) return;
 
@@ -448,9 +446,26 @@ function updateCartButton() {
     qty: c.qty
   }));
 
-  try {
+  // ================= GENERATE WHATSAPP MESSAGE FIRST =================
+  const customerData = {
+    tableNo: tableNo.value,
+    personsCount: personsCount.value,
+    name: custName.value.trim(),
+    mobile: custMobile.value.trim(),
+    address: custAddress.value.trim(),
+    lat: latInput.value,
+    lng: lngInput.value
+  };
+  const message = generateWhatsAppReceipt(orderType.value, cart, customerData);
 
-    // ================= CALL SERVER FIRST =================
+  // ================= OPEN WHATSAPP IMMEDIATELY (WORKAROUND) =================
+  const waWindow = window.open(`https://api.whatsapp.com/send?phone=97366939332&text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  if (!waWindow) {
+    alert("Popup blocked! Please allow popups to send WhatsApp message.");
+  }
+
+  try {
+    // ================= CALL SERVER =================
     const res = await fetch('/api/orders/whatsapp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -467,38 +482,19 @@ function updateCartButton() {
       return;
     }
 
-    // ================= AFTER SUCCESS → OPEN WHATSAPP =================
-    const customerData = {
-      tableNo: tableNo.value,
-      personsCount: personsCount.value,
-      name: custName.value.trim(),
-      mobile: custMobile.value.trim(),
-      address: custAddress.value.trim(),
-      lat: latInput.value,
-      lng: lngInput.value
-    };
-
-    const message = generateWhatsAppReceipt(orderType.value, cart, customerData);
-
-    window.open(
-      `https://wa.me/97366939332?text=${encodeURIComponent(message)}`,
-      '_blank'
-    );
-
     // ================= RESET =================
     cartModal.hide();
     cart = [];
     updateCartButton();
-
     document.querySelectorAll('.qty-badge').forEach(b => b.textContent = '0');
 
-    // ⭐ IMPORTANT → reload latest stock from DB
+    // ⭐ reload latest stock from DB
     fetchMenuItems();
 
   } catch (err) {
     alert('Server error');
+    console.error(err);
   }
-
 });
 
   // ---------------- WhatsApp Receipt ----------------
