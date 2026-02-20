@@ -1,3 +1,4 @@
+// --- DOM Elements ---
 const extraPricesList = document.getElementById('extraPricesList');
 const addExtraPriceBtn = document.getElementById('addExtraPriceBtn');
 const createItemForm = document.getElementById('createItemForm');
@@ -10,7 +11,7 @@ const activeCheckbox = createItemForm.querySelector('input[name="isActive"]');
 const itemImage = document.getElementById('itemImage');
 const categorySelect = document.getElementById('categorySelect');
 
-// Image preview
+// --- Image Preview ---
 if (itemImage) {
   itemImage.addEventListener('change', e => {
     const file = e.target.files[0];
@@ -21,12 +22,12 @@ if (itemImage) {
   });
 }
 
-// Extra prices
+// --- Extra Prices Logic ---
 function addExtraPriceRow(label = '', price = '') {
   const row = document.createElement('div');
   row.className = 'd-flex gap-2 mb-1 extra-price-row';
   row.innerHTML = `
-    <input type="text" class="form-control price-label" placeholder="Label" value="${label}">
+    <input type="text" class="form-control price-label" placeholder="Label (e.g. Large)" value="${label}">
     <input type="number" class="form-control price-value" placeholder="Price" value="${price}" step="0.01">
     <button type="button" class="btn btn-danger btn-sm remove-price-btn">&times;</button>
   `;
@@ -35,55 +36,71 @@ function addExtraPriceRow(label = '', price = '') {
 }
 addExtraPriceBtn.addEventListener('click', () => addExtraPriceRow());
 
-// ===============================
-// LOAD CATEGORIES INTO DROPDOWN
-// ===============================
+// --- LOAD CATEGORIES ---
 async function loadCategories() {
   try {
-    const res = await fetch('/api/categories', {
-      credentials: 'include'  // ✅ make sure cookies/session sent
-    });
+    const res = await fetch('/api/categories', { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to fetch categories');
 
     const data = await res.json();
-    console.log('Categories loadedaaaa:', data); // 🔍 debug
+    
+    // Clear current options
+    categorySelect.innerHTML = '';
 
-    categorySelect.innerHTML = '<option disabled selected>Select Category</option>';
+    // Default option
+    const defaultOpt = document.createElement('option');
+    defaultOpt.disabled = true;
+    defaultOpt.selected = true;
+    defaultOpt.textContent = 'Select Category';
+    categorySelect.appendChild(defaultOpt);
 
     if (!data || data.length === 0) {
-      categorySelect.innerHTML += '<option disabled>No categories found</option>';
+      const noOpt = document.createElement('option');
+      noOpt.disabled = true;
+      noOpt.textContent = 'No categories found';
+      categorySelect.appendChild(noOpt);
     } else {
       data.forEach(c => {
-        // Use category ID as value, name as display
-        categorySelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+        const opt = document.createElement('option');
+        // IMPORTANT: Your DB 'items' table stores category as a Name (VARCHAR), not an ID.
+        // So we set the value to 'c.name' so the form submits the name correctly.
+        opt.value = c.name; 
+        opt.textContent = c.name;
+        categorySelect.appendChild(opt);
       });
     }
 
-    categorySelect.innerHTML += `
-      <option disabled>──────────</option>
-      <option value="__add_new__">➕ Add New Category</option>
-    `;
+    // Add "New Category" option
+    const divider = document.createElement('option');
+    divider.disabled = true;
+    divider.textContent = '──────────';
+    categorySelect.appendChild(divider);
+
+    const addNewOpt = document.createElement('option');
+    addNewOpt.value = "__add_new__";
+    addNewOpt.textContent = "➕ Add New Category";
+    categorySelect.appendChild(addNewOpt);
+
   } catch (err) {
     console.error('Error loading categories:', err);
-    categorySelect.innerHTML = '<option disabled selected>Error loading categories</option>';
+    categorySelect.innerHTML = '<option disabled selected>Error loading</option>';
   }
 }
 
-
-
-// Show modal when add new clicked
+// --- Category Modal Logic ---
 categorySelect.addEventListener('change', function () {
   if (this.value === '__add_new__') {
-    this.value = '';
+    this.value = ''; // Reset selection
     const modal = new bootstrap.Modal(document.getElementById('categoryModal'));
     modal.show();
   }
 });
 
-// Save new category from modal
 document.getElementById('saveCategoryBtn').addEventListener('click', async () => {
-  const name = document.getElementById('newCategoryName').value.trim();
+  const nameInput = document.getElementById('newCategoryName');
+  const name = nameInput.value.trim();
   if (!name) return alert('Enter category name');
+  
   try {
     const res = await fetch('/api/categories', {
       method: 'POST',
@@ -91,37 +108,52 @@ document.getElementById('saveCategoryBtn').addEventListener('click', async () =>
       body: JSON.stringify({ name }),
       credentials: 'include'
     });
+    
     if (!res.ok) {
       const err = await res.json();
-      alert(err.error || 'Failed to add category');
-      return;
+      return alert(err.error || 'Failed to add category');
     }
-    document.getElementById('newCategoryName').value = '';
+    
+    nameInput.value = '';
     bootstrap.Modal.getInstance(document.getElementById('categoryModal')).hide();
-    loadCategories();
-  } catch(err){ console.error(err); alert('Error saving category'); }
+    
+    // Reload categories and select the new one
+    await loadCategories();
+    categorySelect.value = name; 
+    
+  } catch(err) { 
+    console.error(err); 
+    alert('Error saving category'); 
+  }
 });
 
+// Initialize on page load
 loadCategories();
 
-// ===============================
-// Submit form
-// ===============================
+// --- FORM SUBMISSION ---
 createItemForm.addEventListener('submit', async e => {
   e.preventDefault();
+  
   const labels = document.querySelectorAll('#extraPricesList .price-label');
   const values = document.querySelectorAll('#extraPricesList .price-value');
   let hasExtraPrice = false;
   labels.forEach((input, idx) => { if (input.value && values[idx].value) hasExtraPrice = true; });
-  if (!hasExtraPrice && !mainPriceInput.value.trim()) { alert('Enter main price or extra price'); return; }
+  
+  if (!hasExtraPrice && !mainPriceInput.value.trim()) { 
+    alert('Enter main price or extra price'); 
+    return; 
+  }
 
   const formData = new FormData(createItemForm);
+  
+  // Append extra prices
   labels.forEach((input, idx) => {
     if (input.value && values[idx].value) {
       formData.append('labels', input.value);
       formData.append('prices', values[idx].value);
     }
   });
+  
   formData.append('vatEnabled', vatCheckbox.checked ? '1' : '0');
   formData.append('isActive', activeCheckbox.checked ? '1' : '0');
 
