@@ -144,7 +144,7 @@ function renderTable() {
           : '')
   }
 </td>
-
+<td>${item.quantity !== null ? item.quantity : ''}</td> <!-- NEW -->
         <td>${item.description || ''}</td>
         <td>${item.image_base64 ? `<img src="${item.image_base64}" width="50">` : ''}</td>
 
