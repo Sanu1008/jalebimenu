@@ -163,21 +163,12 @@ app.get('/api/items', async (req, res) => {
 
 // ---------------- PUBLIC MENU (CLIENT ID WISE) ----------------
 // Anyone (customer) can view menu using client id
-app.get('/api/menu/:id?', async (req, res) => {
+// 1️⃣ ALL ITEMS (no client filter)
+app.get('/api/menu', async (req, res) => {
   try {
-    const clientId = req.params.id;
-
-    let sql = 'SELECT * FROM items WHERE is_active=1';
-    let params = [];
-
-    if (clientId && !isNaN(clientId)) {
-      sql += ' AND client_id=?';
-      params.push(clientId);
-    }
-
-    sql += ' ORDER BY category, name';
-
-    const [rows] = await pool.query(sql, params);
+    const [rows] = await pool.query(
+      'SELECT * FROM items WHERE is_active=1 ORDER BY category, name'
+    );
 
     const items = [];
 
@@ -207,7 +198,50 @@ app.get('/api/menu/:id?', async (req, res) => {
     }
 
     res.json(items);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
+
+// 2️⃣ CLIENT-SPECIFIC ITEMS
+app.get('/api/menu/:id', async (req, res) => {
+  try {
+    const clientId = req.params.id;
+
+    const [rows] = await pool.query(
+      'SELECT * FROM items WHERE client_id=? AND is_active=1 ORDER BY category, name',
+      [clientId]
+    );
+
+    const items = [];
+
+    for (let item of rows) {
+      const [extraPrices] = await pool.query(
+        'SELECT id, label, price FROM item_prices WHERE item_id=?',
+        [item.id]
+      );
+
+      let imageBase64 = '';
+      if (item.image) {
+        const buffer = Buffer.isBuffer(item.image)
+          ? item.image
+          : Buffer.from(item.image, 'binary');
+        const mimeType =
+          buffer[0] === 0x89 ? 'image/png' : 'image/jpeg';
+        imageBase64 = `data:${mimeType};base64,${buffer.toString('base64')}`;
+      }
+
+      const { image, ...rest } = item;
+
+      items.push({
+        ...rest,
+        image_base64: imageBase64,
+        extra_prices: extraPrices
+      });
+    }
+
+    res.json(items);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
