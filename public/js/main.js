@@ -130,7 +130,7 @@ function renderTable() {
   pageItems.forEach(item => {
     itemsTableBody.innerHTML += `
       <tr>
-        <td>${item.id}</td>
+        <td>${(currentPage - 1) * itemsPerPage + pageItems.indexOf(item) + 1}</td>
         <td>${item.name}</td>
         <td>${item.category}</td>
         <td>
