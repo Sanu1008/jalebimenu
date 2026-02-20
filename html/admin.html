@@ -2,15 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Admin Login</title>
+  <title>Login</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="p-4">
   <div class="card shadow-sm p-4" style="max-width: 400px; margin:auto; margin-top:100px;">
-    <h3 class="text-center mb-3">Admin Login</h3>
+    <h3 class="text-center mb-3">Login</h3>
     <form id="loginForm">
       <input type="text" name="username" class="form-control mb-2" placeholder="Username" required>
       <input type="password" name="password" class="form-control mb-2" placeholder="Password" required>
+
+      <select name="role" id="roleSelect" class="form-select mb-2">
+        <option value="admin">Admin</option>
+        <option value="client">Client</option>
+      </select>
+
       <button class="btn btn-primary w-100">Login</button>
       <div id="loginError" class="text-danger mt-2 d-none"></div>
     </form>
@@ -22,16 +28,28 @@
 
     loginForm.addEventListener('submit', async e => {
       e.preventDefault();
-      const data = Object.fromEntries(new FormData(loginForm).entries());
-      const res = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(data),
-        credentials: 'include'
-      });
-      if(res.ok) window.location.href = '/dashboard';
-      else {
-        loginError.textContent = (await res.json()).error;
+      const formData = Object.fromEntries(new FormData(loginForm).entries());
+      const url = formData.role === 'admin' ? '/api/admin/login' : '/api/client/login';
+
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(formData),
+          credentials: 'include'
+        });
+
+        if(res.ok){
+          // Redirect based on role
+          if(formData.role === 'admin') window.location.href = '/dashboard';
+          else window.location.href = '/menu';
+        } else {
+          const err = await res.json();
+          loginError.textContent = err.error || 'Login failed';
+          loginError.classList.remove('d-none');
+        }
+      } catch(err){
+        loginError.textContent = 'Server error';
         loginError.classList.remove('d-none');
       }
     });
