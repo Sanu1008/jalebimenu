@@ -48,6 +48,38 @@ async function fetchItems() {
   populateCategoryFilter();
   renderTable();
 }
+async function loadEditCategories(selectedCategory = '') {
+  try {
+    const res = await fetch('/api/categories');
+    if (!res.ok) throw new Error('Failed to fetch categories');
+
+    const data = await res.json();
+    const editCategorySelect = document.getElementById('editCategory');
+
+    editCategorySelect.innerHTML = '';
+
+    // Default option
+    const defaultOpt = document.createElement('option');
+    defaultOpt.disabled = true;
+    defaultOpt.textContent = 'Select Category';
+    editCategorySelect.appendChild(defaultOpt);
+
+    data.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.name;
+      opt.textContent = c.name;
+
+      if (c.name === selectedCategory) {
+        opt.selected = true; // 👈 preselect current category
+      }
+
+      editCategorySelect.appendChild(opt);
+    });
+
+  } catch (err) {
+    console.error('Error loading edit categories:', err);
+  }
+}
 
 // Populate Category Dropdown
 function populateCategoryFilter() {
@@ -141,28 +173,24 @@ async function deleteItem(id){
 
 
 // ---------------- EDIT ----------------
-// ---------------- EDIT ----------------
 async function openEditModal(id){
   const item = allItems.find(i => i.id === id);
   if(!item) return;
 
   document.getElementById('editId').value = item.id;
   document.getElementById('editName').value = item.name;
-  document.getElementById('editCategory').value = item.category;
   document.getElementById('editPrice').value = item.price;
   document.getElementById('editDescription').value = item.description || '';
 
-  // Pre-fill VAT checkbox
-  const vatCheckbox = document.getElementById('editVatEnabled');
-  vatCheckbox.checked = item.vat_enabled === 1;
+  await loadEditCategories(item.category); // ⭐ NEW
 
-  // Pre-fill Active checkbox
-  const activeCheckbox = document.getElementById('editIsActive');
-  activeCheckbox.checked = item.is_active === 1;  
+  document.getElementById('editVatEnabled').checked = item.vat_enabled === 1;
+  document.getElementById('editIsActive').checked = item.is_active === 1;  
 
-  currentImageDiv.innerHTML = item.image_base64 ? `<img src="${item.image_base64}" width="100">` : '';
+  currentImageDiv.innerHTML = item.image_base64 
+    ? `<img src="${item.image_base64}" width="100">` 
+    : '';
 
-  // Clear previous extra prices
   extraPricesList.innerHTML = '';
   if (item.extra_prices && item.extra_prices.length > 0) {
     item.extra_prices.forEach(p => addExtraPriceRow(p.label, p.price));
