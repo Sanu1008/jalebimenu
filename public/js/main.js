@@ -164,17 +164,18 @@ async function openEditModal(id){
 
 editItemForm.addEventListener('submit', async e => {
   e.preventDefault();
+
   const formData = new FormData(editItemForm);
   const id = document.getElementById('editId').value;
 
-  // ---------------- ADD ACTIVE STATE ----------------
-  const isActive = document.getElementById('editIsActive').checked;
-  formData.append('isActive', isActive ? '1' : '0');
+  // ⭐ FIX: DO NOT append isActive manually
+  // FormData already sends it automatically
 
   // ---------------- COLLECT EXTRA PRICES ----------------
   const mainPrice = document.getElementById('editPrice').value.trim();
   const labels = document.querySelectorAll('#extraPricesList .price-label');
   const values = document.querySelectorAll('#extraPricesList .price-value');
+
   let hasExtraPrice = false;
 
   labels.forEach((input, idx) => {
@@ -198,13 +199,15 @@ editItemForm.addEventListener('submit', async e => {
   });
 
   const res = await fetch(`/api/items/${id}`, { method: 'PUT', body: formData });
+
   if(res.ok){
     editModal.hide();
-    fetchItems();  // Refresh the table after editing
+    fetchItems();
   } else {
     alert('Failed to update item');
   }
 });
+
 
 
 // ---------------- INITIAL LOAD ----------------
