@@ -133,6 +133,7 @@ app.get('/api/items', async (req, res) => {
     let sql = 'SELECT * FROM items';
     let params = [];
 
+    // If client is logged in, filter by client_id
     if (req.session.clientId) {
       sql += ' WHERE client_id=?';
       params.push(req.session.clientId);
