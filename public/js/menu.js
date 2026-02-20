@@ -45,11 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
     allItems = data
   .filter(i => i.is_active == 1)
   .map(i => ({
-
   ...i,
   price: i.price !== null ? Number(i.price) : null,
-  vatEnabled: i.vat_enabled == 1,   // ⭐ IMPORTANT FIX
-  image_base64: i.image_base64 || ''
+  vatEnabled: i.vat_enabled == 1,
+  image_base64: i.image_base64 || '',
+  stock: i.qty_available === null ? Infinity : Number(i.qty_available) // ⭐ NEW
 }));
 
 
@@ -103,7 +103,9 @@ function renderItems(items) {
             <span class="qty-badge badge bg-success px-3">0</span>
             <button class="btn btn-outline-secondary qty-plus">+</button>
           </div>
-          <div class="text-center small text-success fw-bold">Tap + to add</div>
+          <div class="text-center small text-success fw-bold stock-label">
+  ${item.stock === Infinity ? '' : `Available: ${item.stock}`}
+</div>
         </div>
       </div>
     `;
@@ -267,26 +269,57 @@ document.addEventListener('change', e => {
     let current = parseInt(badge.textContent);
 
     if (e.target.classList.contains('qty-plus')) {
-      current++;
-      badge.textContent = current;
-      if (existing) existing.qty++;
-      else cart.push({ key, name: item.name, variant, price, qty: 1 });
-      updateCartButton();
-    }
+
+  if (item.stock <= 0) return; // ⭐ stop if no stock
+
+  current++;
+  badge.textContent = current;
+
+  if (existing) existing.qty++;
+  else cart.push({ key, name: item.name, variant, price, qty: 1 });
+
+  item.stock--; // ⭐ reduce stock
+
+  updateStockUI(card, item.stock); // ⭐ update label
+
+  updateCartButton();
+}
 
     if (e.target.classList.contains('qty-minus')) {
-      if (current <= 0) return;
-      current--;
-      badge.textContent = current;
-      if (!existing) return;
-      existing.qty--;
-      if (existing.qty <= 0) cart = cart.filter(c => c.key !== key);
-      updateCartButton();
+  if (current <= 0) return;
+
+  current--;
+  badge.textContent = current;
+
+  if (!existing) return;
+
+  existing.qty--;
+  item.stock++; // ⭐ return stock
+  updateStockUI(card, item.stock);
+
+  if (existing.qty <= 0) cart = cart.filter(c => c.key !== key);
+
+  updateCartButton();
     }
   });
+function updateStockUI(card, stock) {
+  const label = card.querySelector('.stock-label');
 
+  if (!label) return;
+
+  if (stock === Infinity) {
+    label.textContent = '';
+    return;
+  }
+
+  label.textContent = stock > 0
+    ? `Available: ${stock}`
+    : '❌ Sold Out';
+
+  const plusBtn = card.querySelector('.qty-plus');
+  plusBtn.disabled = stock <= 0;
+}
   // ---------------- Update Cart Button (Show Variant Summary) ----------------
-  // ---------------- Update Cart Button (Simple Summary) ----------------
 function updateCartButton() {
   if (!cart.length) {
     cartButton.style.display = 'none';

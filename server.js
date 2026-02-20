@@ -133,7 +133,6 @@ app.get('/api/items', async (req, res) => {
     let sql = 'SELECT * FROM items';
     let params = [];
 
-    // If client is logged in, filter by client_id
     if (req.session.clientId) {
       sql += ' WHERE client_id=?';
       params.push(req.session.clientId);
@@ -144,18 +143,39 @@ app.get('/api/items', async (req, res) => {
 
     for (let item of rows) {
       const [extraPrices] = await pool.query('SELECT id, label, price FROM item_prices WHERE item_id=?', [item.id]);
+
       let imageBase64 = '';
       if (item.image) {
-        let buffer = typeof item.image === 'string' ? Buffer.from(item.image.replace(/^0x/, ''), 'hex') : item.image;
-        const isPng = buffer.length > 3 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E;
-        const mimeType = isPng ? 'image/png' : 'image/jpeg';
+        const buffer = Buffer.isBuffer(item.image) ? item.image : Buffer.from(item.image, 'binary');
+        const mimeType = buffer[0] === 0x89 ? 'image/png' : 'image/jpeg';
         imageBase64 = `data:${mimeType};base64,${buffer.toString('base64')}`;
       }
+
       const { image, ...rest } = item;
       items.push({ ...rest, image_base64: imageBase64, extra_prices: extraPrices });
     }
 
     res.json(items);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+app.post('/api/orders', async (req, res) => {
+  try {
+    const { items } = req.body; // [{ itemId, qty }, ...]
+    
+    for (const orderItem of items) {
+      const [rows] = await pool.query('SELECT quantity FROM items WHERE id=? AND client_id=?', 
+                                      [orderItem.itemId, req.session.clientId]);
+      if (rows.length && rows[0].quantity !== null) {
+        if (rows[0].quantity < orderItem.qty) {
+          return res.status(400).json({ error: `Only ${rows[0].quantity} available for item ${orderItem.itemId}` });
+        }
+        await pool.query('UPDATE items SET quantity = quantity - ? WHERE id=?', [orderItem.qty, orderItem.itemId]);
+      }
+    }
+
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
