@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Category Master</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+  <h4 class="mb-3">Category Master</h4>
+
+  <div class="input-group mb-3">
+    <input id="catName" class="form-control" placeholder="Category name">
+    <button class="btn btn-primary" onclick="add()">Add</button>
+  </div>
+
+  <table class="table table-bordered">
+    <thead class="table-dark">
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th width="100">Action</th>
+      </tr>
+    </thead>
+    <tbody id="list"></tbody>
+  </table>
+</div>
+
+<script>
+async function load() {
+  const res = await fetch('/api/categories');
+  const data = await res.json();
+
+  const tbody = document.getElementById('list');
+  tbody.innerHTML = '';
+
+  data.forEach(c => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${c.id}</td>
+        <td>${c.name}</td>
+        <td>
+          <button class="btn btn-danger btn-sm" onclick="del(${c.id})">Delete</button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+async function add() {
+  const name = document.getElementById('catName').value;
+
+  await fetch('/api/categories', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ name })
+  });
+
+  document.getElementById('catName').value='';
+  load();
+}
+
+async function del(id) {
+  await fetch('/api/categories/' + id, { method: 'DELETE' });
+  load();
+}
+
+load();
+</script>
+</body>
+</html>

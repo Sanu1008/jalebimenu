@@ -33,6 +33,41 @@ function addExtraPriceRow(label = '', price = '') {
   row.querySelector('.remove-price-btn').addEventListener('click', () => row.remove());
 }
 addExtraPriceBtn.addEventListener('click', () => addExtraPriceRow());
+// ===============================
+// LOAD CATEGORIES INTO DROPDOWN
+// ===============================
+async function loadCategories() {
+  const res = await fetch('/api/categories');
+  const data = await res.json();
+
+  const select = document.getElementById('categorySelect');
+  select.innerHTML = '';
+
+  // normal categories
+  data.forEach(c => {
+    select.innerHTML += `<option value="${c.name}">${c.name}</option>`;
+  });
+
+  // divider + add new
+  select.innerHTML += `
+    <option disabled>──────────</option>
+    <option value="__add_new__">➕ Add New Category</option>
+  `;
+}
+// ===============================
+// OPEN MODAL WHEN ADD NEW CLICKED
+// ===============================
+document.getElementById('categorySelect').addEventListener('change', function () {
+  if (this.value === '__add_new__') {
+    this.value = ''; // reset selection
+
+    const modal = new bootstrap.Modal(document.getElementById('categoryModal'));
+    modal.show();
+  }
+});
+
+
+loadCategories();
 
 // Submit form
 createItemForm.addEventListener('submit', async e => {

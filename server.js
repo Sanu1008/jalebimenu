@@ -51,7 +51,13 @@ async function createTables() {
         FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
       );
     `);
-
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`);
     console.log('✅ Tables ready');
   } catch (err) {
     console.error('❌ Table creation error:', err);
@@ -186,11 +192,61 @@ app.delete('/api/items/:id', isAdmin, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// ==================================================
+// CATEGORY MASTER APIs (NEW – DOES NOT TOUCH ITEMS)
+// ==================================================
+
+// Get all categories
+app.get('/api/categories', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM categories ORDER BY name'
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add category
+app.post('/api/categories', isAdmin, async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name || !name.trim())
+      return res.status(400).json({ error: 'Category name required' });
+
+    await pool.query(
+      'INSERT INTO categories (name) VALUES (?)',
+      [name.trim()]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete category
+app.delete('/api/categories/:id', isAdmin, async (req, res) => {
+  try {
+    await pool.query(
+      'DELETE FROM categories WHERE id=?',
+      [req.params.id]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ---------------- HTML Pages ----------------
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'html/admin.html')));
 app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'html/dashboard.html')));
 app.get('/menu', (req, res) => res.sendFile(path.join(__dirname, 'html/menu.html')));
-
+app.get('/categories', (req, res) =>
+  res.sendFile(path.join(__dirname, 'html/category-master.html'))
+);
 // ---------------- Start Server ----------------
 app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
