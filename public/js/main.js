@@ -96,10 +96,19 @@ function renderTable() {
 
         <td>${item.description || ''}</td>
         <td>${item.image_base64 ? `<img src="${item.image_base64}" width="50">` : ''}</td>
-        <td>
-          <button class="btn btn-sm btn-info me-2" onclick="openEditModal(${item.id})">Edit</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteItem(${item.id})">Delete</button>
-        </td>
+
+<td>
+  ${
+    item.is_active === 1
+      ? '<span class="badge bg-success">Active</span>'
+      : '<span class="badge bg-danger">Inactive</span>'
+  }
+</td>
+
+<td>
+  <button class="btn btn-sm btn-info me-2" onclick="openEditModal(${item.id})">Edit</button>
+  <button class="btn btn-sm btn-danger" onclick="deleteItem(${item.id})">Delete</button>
+</td>
       </tr>
     `;
   });
