@@ -8,6 +8,7 @@ const mainPriceInput = createItemForm.querySelector('input[name="price"]');
 const vatCheckbox = createItemForm.querySelector('input[name="vatEnabled"]');
 const activeCheckbox = createItemForm.querySelector('input[name="isActive"]');
 const itemImage = document.getElementById('itemImage');
+const categorySelect = document.getElementById('categorySelect');
 
 // Image preview
 if (itemImage) {
@@ -33,6 +34,7 @@ function addExtraPriceRow(label = '', price = '') {
   row.querySelector('.remove-price-btn').addEventListener('click', () => row.remove());
 }
 addExtraPriceBtn.addEventListener('click', () => addExtraPriceRow());
+
 // ===============================
 // LOAD CATEGORIES INTO DROPDOWN
 // ===============================
@@ -40,36 +42,54 @@ async function loadCategories() {
   const res = await fetch('/api/categories');
   const data = await res.json();
 
-  const select = document.getElementById('categorySelect');
-  select.innerHTML = '';
+  categorySelect.innerHTML = '<option disabled selected>Select Category</option>';
 
-  // normal categories
   data.forEach(c => {
-    select.innerHTML += `<option value="${c.name}">${c.name}</option>`;
+    categorySelect.innerHTML += `<option value="${c.name}">${c.name}</option>`;
   });
 
-  // divider + add new
-  select.innerHTML += `
+  categorySelect.innerHTML += `
     <option disabled>──────────</option>
     <option value="__add_new__">➕ Add New Category</option>
   `;
 }
-// ===============================
-// OPEN MODAL WHEN ADD NEW CLICKED
-// ===============================
-document.getElementById('categorySelect').addEventListener('change', function () {
-  if (this.value === '__add_new__') {
-    this.value = ''; // reset selection
 
+// Show modal when add new clicked
+categorySelect.addEventListener('change', function () {
+  if (this.value === '__add_new__') {
+    this.value = '';
     const modal = new bootstrap.Modal(document.getElementById('categoryModal'));
     modal.show();
   }
 });
 
+// Save new category from modal
+document.getElementById('saveCategoryBtn').addEventListener('click', async () => {
+  const name = document.getElementById('newCategoryName').value.trim();
+  if (!name) return alert('Enter category name');
+  try {
+    const res = await fetch('/api/categories', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name }),
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      alert(err.error || 'Failed to add category');
+      return;
+    }
+    document.getElementById('newCategoryName').value = '';
+    bootstrap.Modal.getInstance(document.getElementById('categoryModal')).hide();
+    loadCategories();
+  } catch(err){ console.error(err); alert('Error saving category'); }
+});
 
 loadCategories();
 
+// ===============================
 // Submit form
+// ===============================
 createItemForm.addEventListener('submit', async e => {
   e.preventDefault();
   const labels = document.querySelectorAll('#extraPricesList .price-label');
@@ -86,7 +106,8 @@ createItemForm.addEventListener('submit', async e => {
     }
   });
   formData.append('vatEnabled', vatCheckbox.checked ? '1' : '0');
-formData.append('isActive', activeCheckbox.checked ? '1' : '0');
+  formData.append('isActive', activeCheckbox.checked ? '1' : '0');
+
   const itemId = createItemForm.dataset.itemId;
   const url = itemId ? `/api/items/${itemId}` : '/api/items';
   const method = itemId ? 'PUT' : 'POST';
