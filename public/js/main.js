@@ -28,14 +28,27 @@ function addExtraPriceRow(label = '', price = '') {
 // Add new row on button click
 addExtraPriceBtn.addEventListener('click', () => addExtraPriceRow());
 
-
 let allItems = [];
 let currentPage = 1;
 const itemsPerPage = 10;
 
+// ---------------- USER INFO ----------------
+let currentUser = { role: 'admin', id: null }; // default
+
+async function getCurrentUser() {
+  try {
+    const res = await fetch('/api/me', { credentials: 'include' });
+    if (res.ok) {
+      currentUser = await res.json(); // { role:'client', id:5 } or { role:'admin' }
+    }
+  } catch(err){
+    console.error('Error fetching current user:', err);
+  }
+}
+
 // ---------------- LOGOUT ----------------
 logoutBtn.addEventListener('click', async () => {
-  await fetch('/api/admin/logout');
+  await fetch('/api/admin/logout', { credentials: 'include' });
   window.location.href = '/';
 });
 
@@ -45,9 +58,15 @@ async function fetchItems() {
   if(!res.ok) return;
   allItems = await res.json();
 
+  // ---------------- FILTER FOR CLIENT ----------------
+  if(currentUser.role === 'client') {
+    allItems = allItems.filter(item => item.client_id == currentUser.id);
+  }
+
   populateCategoryFilter();
   renderTable();
 }
+
 async function loadEditCategories(selectedCategory = '') {
   try {
     const res = await fetch('/api/categories');
@@ -171,7 +190,6 @@ async function deleteItem(id){
   if(res.ok) fetchItems();  // Refresh the table after deletion
 }
 
-
 // ---------------- EDIT ----------------
 async function openEditModal(id){
   const item = allItems.find(i => i.id === id);
@@ -204,9 +222,6 @@ editItemForm.addEventListener('submit', async e => {
 
   const formData = new FormData(editItemForm);
   const id = document.getElementById('editId').value;
-
-  // ⭐ FIX: DO NOT append isActive manually
-  // FormData already sends it automatically
 
   // ---------------- COLLECT EXTRA PRICES ----------------
   const mainPrice = document.getElementById('editPrice').value.trim();
@@ -245,7 +260,8 @@ editItemForm.addEventListener('submit', async e => {
   }
 });
 
-
-
 // ---------------- INITIAL LOAD ----------------
-fetchItems();
+(async () => {
+  await getCurrentUser();
+  fetchItems();
+})();

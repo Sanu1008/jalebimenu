@@ -160,7 +160,16 @@ app.get('/api/items', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
+// server.js (Node/Express)
+app.get('/api/me', (req,res)=>{
+  if(req.session.clientId){
+    res.json({ role:'client', id: req.session.clientId, username: req.session.clientUsername });
+  } else if(req.session.loggedIn){
+    res.json({ role:'admin' });
+  } else {
+    res.status(401).json({ error:'Unauthorized' });
+  }
+});
 // ---------------- ADD ITEM ----------------
 app.post('/api/items', upload.single('image'), async (req, res) => {
   try {

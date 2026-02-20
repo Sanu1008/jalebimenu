@@ -40,9 +40,8 @@
         });
 
         if(res.ok){
-          // Redirect based on role
-          if(formData.role === 'admin') window.location.href = '/dashboard';
-          else window.location.href = '/menu';
+  window.location.href = '/dashboard'; // same for all
+
         } else {
           const err = await res.json();
           loginError.textContent = err.error || 'Login failed';
