@@ -246,5 +246,6 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'html/admin.html'))
 app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'html/dashboard.html')));
 app.get('/menu', (req, res) => res.sendFile(path.join(__dirname, 'html/menu.html')));
 app.get('/categories', (req, res) => res.sendFile(path.join(__dirname, 'html/category-master.html')));
+app.get('/categories.html', (req, res) => res.redirect('/categories')); // ✅ fix
 // ---------------- Start Server ----------------
 app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
