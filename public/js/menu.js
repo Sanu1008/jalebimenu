@@ -1,5 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
 
+  // ================= SHOP LOCATION =================
+  const SHOP_LAT = 11.38059;
+  const SHOP_LNG = 75.72436;
+
+  // ================= DELIVERY SETTINGS =================
+  const FREE_KM = 1;
+  const PRICE_PER_KM = 1; // 1 BHD per KM
+
   const menuItemsDiv = document.getElementById('menuItems');
   const searchInput = document.getElementById('searchInput');
   const categoryFilter = document.getElementById('categoryFilter');
@@ -10,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const cartTotalSpan = document.getElementById('cartTotal');
   const sendOrderBtn = document.getElementById('sendOrderBtn');
 
-  // ================= ORDER TYPE ELEMENTS =================
   const orderType = document.getElementById('orderType');
   const diningFields = document.getElementById('diningFields');
   const deliveryFields = document.getElementById('deliveryFields');
@@ -25,384 +32,124 @@ document.addEventListener('DOMContentLoaded', () => {
   const latInput = document.getElementById('lat');
   const lngInput = document.getElementById('lng');
 
+  let allItems = [];
+  let cart = [];
+
+  // ================= DISTANCE CALCULATION =================
+  function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) *
+      Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  function calculateDelivery(customerLat, customerLng) {
+    if (!customerLat || !customerLng) {
+      return { distance: 0, charge: 0 };
+    }
+
+    const distance = calculateDistanceKm(
+      SHOP_LAT,
+      SHOP_LNG,
+      parseFloat(customerLat),
+      parseFloat(customerLng)
+    );
+
+    if (distance <= FREE_KM) {
+      return { distance, charge: 0 };
+    }
+
+    const extraKm = Math.ceil(distance - FREE_KM);
+    const charge = extraKm * PRICE_PER_KM;
+
+    return { distance, charge };
+  }
+
   // ================= ORDER TYPE TOGGLE =================
   orderType.addEventListener('change', () => {
     const isDining = orderType.value === 'dining';
     diningFields.style.display = isDining ? 'block' : 'none';
     deliveryFields.style.display = isDining ? 'none' : 'block';
-  });
-
-  if (!menuItemsDiv || !searchInput || !categoryFilter || !cartButton) return;
-
-  let allItems = [];
-  let cart = [];
-
-  // ---------------- Fetch menu items ----------------
-  async function fetchMenuItems() {
-
-  const pathParts = window.location.pathname.split('/');
-  const clientId = pathParts.length > 2 ? pathParts[2] : null;
-
-  let url = '/api/menu';
-
-  if (clientId && !isNaN(clientId)) {
-    url += '/' + clientId;
-  }
-
-  const res = await fetch(url);
-  const data = await res.json();
-
-  allItems = data
-    .filter(i => i.is_active == 1)
-    .map(i => ({
-      ...i,
-      price: i.price !== null ? Number(i.price) : null,
-      vatEnabled: i.vat_enabled == 1,
-      image_base64: i.image_base64 || '',
-      stock: i.quantity === null ? Infinity : Number(i.quantity)
-    }));
-
-  populateCategoryFilter();
-  renderItems(allItems);
-}
-
-  // ---------------- Categories ----------------
-  function populateCategoryFilter() {
-    categoryFilter.innerHTML = `<option value="">All Categories</option>`;
-    [...new Set(allItems.map(i => i.category))]
-      .forEach(c => categoryFilter.innerHTML += `<option>${c}</option>`);
-  }
-
- // ---------------- Render Items ----------------
-function renderItems(items) {
-  menuItemsDiv.innerHTML = '';
-  items.forEach(item => {
-    let priceOptions = '';
-    if (item.price !== null && item.price > 0) {
-  const mainPrice = Number(item.price);
-  const priceWithVAT = mainPrice.toFixed(3); // already included
-  priceOptions += `<option value="${mainPrice}">${priceWithVAT} BHD ${item.vatEnabled ? '(VAT)' : ''}</option>`;
-}
-
-    if (item.extra_prices) {
-  item.extra_prices.forEach(p => {
-    const priceNum = Number(p.price); // convert to number
-    if (!isNaN(priceNum)) {
-      const priceWithVAT = priceNum.toFixed(3);
-      priceOptions += `<option value="${priceNum}">${p.label} - ${priceWithVAT} BHD ${item.vatEnabled ? '(VAT)' : ''}</option>`;
-    }
-  });
-}
-
-
-    const col = document.createElement('div');
-    col.className = 'col';
-
-    col.innerHTML = `
-      <div class="card menu-card shadow-sm" data-id="${item.id}">
-        ${item.image_base64 ? `<img src="${item.image_base64}" class="menu-img">` : ''}
-        <div class="card-body">
-          <h6 class="fw-bold">${item.name}</h6>
-          <small class="variant-display text-muted mb-1 d-block">${item.extra_prices && item.extra_prices.length ? 'Regular' : ''}</small>
-          <select class="form-select form-select-sm my-2 price-select">
-            ${priceOptions}
-          </select>
-          <div class="qty-wrapper d-flex justify-content-center align-items-center gap-2 mb-2">
-            <button class="btn btn-outline-secondary qty-minus">−</button>
-            <span class="qty-badge badge bg-success px-3">0</span>
-            <button class="btn btn-outline-secondary qty-plus">+</button>
-          </div>
-          <div class="text-center small text-success fw-bold stock-label">
-  ${item.stock === Infinity ? '' : `Available: ${item.stock}`}
-</div>
-        </div>
-      </div>
-    `;
-    menuItemsDiv.appendChild(col);
-  });
-}
-
-// ---------------- Update Cart Modal ----------------
-function renderCartModal() {
-  cartItemsDiv.innerHTML = '';
-
-  let total = 0;
-  let totalVAT = 0;
-
-  cart.forEach((item, index) => {
-    const itemObj = allItems.find(i => i.id == item.key.split('-')[0]);
-
-    const vatEnabled = itemObj?.vatEnabled;
-
-    const basePrice = item.price;
-    let vatAmount = 0;
-    let finalPrice = basePrice;
-
-    if (vatEnabled) {
-      vatAmount = basePrice * 0.10;   // 10% VAT
-      finalPrice = basePrice + vatAmount;
-    }
-
-    const itemTotal = finalPrice * item.qty;
-
-    total += itemTotal;
-    totalVAT += vatAmount * item.qty;
-
-    cartItemsDiv.innerHTML += `
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <div>
-          <b>${item.name}${item.variant ? ' (' + item.variant + ')' : ''}</b><br>
-          <small>
-            ${basePrice.toFixed(3)} + VAT ${vatAmount.toFixed(3)} = 
-            <b>${finalPrice.toFixed(3)} BHD</b>
-          </small>
-        </div>
-        <div>
-          <button class="btn btn-sm btn-outline-secondary cart-minus" data-i="${index}">-</button>
-          <span class="mx-2">${item.qty}</span>
-          <button class="btn btn-sm btn-outline-secondary cart-plus" data-i="${index}">+</button>
-          <button class="btn btn-sm btn-danger ms-2 cart-remove" data-i="${index}">✕</button>
-        </div>
-      </div>
-    `;
-  });
-
-  cartTotalSpan.textContent = total.toFixed(3);
-
-  document.getElementById('cartVAT').textContent =
-    `Total VAT: ${totalVAT.toFixed(3)} BHD`;
-}
-
-// ---------------- WhatsApp Receipt ----------------
-function generateWhatsAppReceipt(orderType, cart, customer = {}) {
-  let msg = "🛍️ *New Customer Order*\n\n";
-
-  if (orderType === 'dining') {
-    const table = customer.tableNo || '-';
-    const persons = customer.personsCount || '-';
-    msg += `🍽️ *Dining*\nTable: ${table} | Persons: ${persons}\n\n`;
-  } else if (orderType === 'delivery') {
-    const name = customer.name || '-';
-    const mobile = customer.mobile || '-';
-    const address = customer.address || '-';
-    const lat = customer.lat || '';
-    const lng = customer.lng || '';
-
-    msg += `🚚 *Delivery*\n*Name:* ${name}\n*Mobile:* ${mobile}\n*Address:* ${address}\n`;
-    if (lat && lng) msg += `📍 Map: https://maps.google.com/?q=${lat},${lng}\n`;
-    msg += `\n`;
-  }
-
-  msg += "🛒 *Order Items*\n```";
-  const itemColWidth = 20;
-  const qtyColWidth = 3;
-  const priceColWidth = 6;
-  const totalColWidth = 6;
-
-  msg += `Item${' '.repeat(itemColWidth - 4)} Qty  Price  Total\n`;
-  msg += '-'.repeat(itemColWidth + qtyColWidth + priceColWidth + totalColWidth + 6) + '\n';
-
-  let grandTotal = 0;
-  cart.forEach(i => {
-    const itemObj = allItems.find(it => it.id == i.key.split('-')[0]);
-    const vatEnabled = itemObj?.vatEnabled;
-    const price = vatEnabled ? i.price * 1.05 : i.price;
-    const itemTotal = price * i.qty;
-    grandTotal += itemTotal;
-
-    let name = i.name;
-    if (i.variant) name += ` (${i.variant})`;
-    if (name.length > itemColWidth) name = name.substring(0, itemColWidth - 3) + '...';
-
-    const itemCol = name.padEnd(itemColWidth, ' ');
-    const qtyCol = i.qty.toString().padStart(qtyColWidth, ' ');
-    const priceCol = price.toFixed(3).padStart(priceColWidth, ' ');
-    const totalCol = itemTotal.toFixed(3).padStart(totalColWidth, ' ');
-
-    msg += `${itemCol} ${qtyCol} ${priceCol} ${totalCol}\n`;
-  });
-
-  msg += '-'.repeat(itemColWidth + qtyColWidth + priceColWidth + totalColWidth + 6) + '\n```';
-  msg += `\n💰 *Grand Total: ${grandTotal.toFixed(3)} BHD*\n`;
-  msg += "\n📌 Please process this order promptly.";
-
-  return msg;
-}
-
-// ---------------- Update Variant Display ----------------
-document.addEventListener('change', e => {
-  if (!e.target.classList.contains('price-select')) return;
-
-  const card = e.target.closest('.card');
-  const variantDisplay = card.querySelector('.variant-display');
-  const selectedVariant = e.target.options[e.target.selectedIndex].text.split(' - ')[0];
-  variantDisplay.textContent = selectedVariant;
-});
-
-
-  // ---------------- Search/Filter ----------------
-  searchInput.addEventListener('input', () => {
-    const term = searchInput.value.toLowerCase();
-    const filtered = allItems.filter(i =>
-      i.name.toLowerCase().includes(term) &&
-      (!categoryFilter.value || i.category === categoryFilter.value)
-    );
-    renderItems(filtered);
-  });
-
-  categoryFilter.addEventListener('change', () =>
-    searchInput.dispatchEvent(new Event('input'))
-  );
-
-  // ---------------- Card Qty + - (With Variants) ----------------
-  document.addEventListener('click', e => {
-    const card = e.target.closest('.card');
-    if (!card) return;
-
-    const id = card.dataset.id;
-    const priceSelect = card.querySelector('.price-select');
-    const price = parseFloat(priceSelect.value);
-    const variant = priceSelect.options[priceSelect.selectedIndex].text.split(' - ')[0];
-
-    const badge = card.querySelector('.qty-badge');
-
-    const item = allItems.find(i => i.id == id);
-    if (!item) return;
-
-    const key = id + '-' + price; // unique per variant
-    const existing = cart.find(c => c.key === key);
-
-    let current = parseInt(badge.textContent);
-
-    if (e.target.classList.contains('qty-plus')) {
-
-  if (item.stock <= 0) return; // ⭐ stop if no stock
-
-  current++;
-  badge.textContent = current;
-
-  if (existing) existing.qty++;
-  else cart.push({ key, name: item.name, variant, price, qty: 1 });
-
-  item.stock--; // ⭐ reduce stock
-
-  updateStockUI(card, item.stock); // ⭐ update label
-
-  updateCartButton();
-}
-
-    if (e.target.classList.contains('qty-minus')) {
-  if (current <= 0) return;
-
-  current--;
-  badge.textContent = current;
-
-  if (!existing) return;
-
-  existing.qty--;
-  item.stock++; // ⭐ return stock
-  updateStockUI(card, item.stock);
-
-  if (existing.qty <= 0) cart = cart.filter(c => c.key !== key);
-
-  updateCartButton();
-    }
-  });
-function updateStockUI(card, stock) {
-  const label = card.querySelector('.stock-label');
-
-  if (!label) return;
-
-  if (stock === Infinity) {
-    label.textContent = '';
-    return;
-  }
-
-  label.textContent = stock > 0
-    ? `Available: ${stock}`
-    : '❌ Sold Out';
-
-  const plusBtn = card.querySelector('.qty-plus');
-  plusBtn.disabled = stock <= 0;
-}
-  // ---------------- Update Cart Button (Show Variant Summary) ----------------
-function updateCartButton() {
-  if (!cart.length) {
-    cartButton.style.display = 'none';
-    return;
-  }
-
-  cartButton.style.display = 'block';
-
-  // Option 1: Show only total item count
-  const totalQty = cart.reduce((s, i) => s + i.qty, 0);
-  cartButton.textContent = `🛒 Cart (${totalQty} items)`;
-}
-
-
-  cartButton.addEventListener('click', () => {
     renderCartModal();
-    cartModal.show();
   });
 
-  // ---------------- Render Cart Modal ----------------
-  function renderCartModal() {
-  cartItemsDiv.innerHTML = '';
-
-  let total = 0;
-  let totalVAT = 0;
-
-  cart.forEach((item, index) => {
-
-    const itemObj = allItems.find(i => i.id == item.key.split('-')[0]);
-    const vatEnabled = itemObj?.vatEnabled;
-
-    const price = item.price; // ⭐ already VAT INCLUDED
-
-    let vatAmount = 0;
-    let netPrice = price;
-
-    if (vatEnabled) {
-      vatAmount = price * 0.10 / 1.10;   // ⭐ back calculate
-      netPrice = price - vatAmount;
+  // ================= UPDATE CART BUTTON =================
+  function updateCartButton() {
+    if (!cart.length) {
+      cartButton.style.display = 'none';
+      return;
     }
 
-    const itemTotal = price * item.qty;
+    cartButton.style.display = 'block';
+    const totalQty = cart.reduce((s, i) => s + i.qty, 0);
+    cartButton.textContent = `🛒 Cart (${totalQty} items)`;
+  }
 
-    total += itemTotal;
-    totalVAT += vatAmount * item.qty;
+  // ================= RENDER CART MODAL =================
+  function renderCartModal() {
 
-    cartItemsDiv.innerHTML += `
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <div>
-          <b>${item.name}${item.variant ? ' (' + item.variant + ')' : ''}</b><br>
+    cartItemsDiv.innerHTML = '';
+    let total = 0;
+    let totalVAT = 0;
 
-          <small>
-            Net: ${netPrice.toFixed(3)} | 
-            VAT: ${vatAmount.toFixed(3)} | 
-            Total: <b>${price.toFixed(3)} BHD</b>
-          </small>
+    cart.forEach((item, index) => {
+
+      const itemTotal = item.price * item.qty;
+      total += itemTotal;
+
+      cartItemsDiv.innerHTML += `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div>
+            <b>${item.name}${item.variant ? ' (' + item.variant + ')' : ''}</b><br>
+            <small>${item.price.toFixed(3)} x ${item.qty}</small>
+          </div>
+          <div>
+            <button class="btn btn-sm btn-outline-secondary cart-minus" data-i="${index}">-</button>
+            <span class="mx-2">${item.qty}</span>
+            <button class="btn btn-sm btn-outline-secondary cart-plus" data-i="${index}">+</button>
+            <button class="btn btn-sm btn-danger ms-2 cart-remove" data-i="${index}">✕</button>
+          </div>
         </div>
+      `;
+    });
 
-        <div>
-          <button class="btn btn-sm btn-outline-secondary cart-minus" data-i="${index}">-</button>
-          <span class="mx-2">${item.qty}</span>
-          <button class="btn btn-sm btn-outline-secondary cart-plus" data-i="${index}">+</button>
-          <button class="btn btn-sm btn-danger ms-2 cart-remove" data-i="${index}">✕</button>
+    // ================= DELIVERY =================
+    let deliveryCharge = 0;
+    let distance = 0;
+
+    if (orderType.value === 'delivery') {
+
+      const result = calculateDelivery(latInput.value, lngInput.value);
+      deliveryCharge = result.charge;
+      distance = result.distance;
+
+      total += deliveryCharge;
+
+      cartItemsDiv.innerHTML += `
+        <hr>
+        <div class="d-flex justify-content-between text-primary">
+          <div>
+            🚚 Delivery (${distance.toFixed(2)} KM)
+          </div>
+          <div>
+            ${deliveryCharge.toFixed(3)} BHD
+          </div>
         </div>
-      </div>
-    `;
-  });
+      `;
+    }
 
-  document.getElementById('cartVAT').textContent =
-    `Total VAT: ${totalVAT.toFixed(3)} BHD`;
+    cartTotalSpan.textContent = total.toFixed(3);
+  }
 
-  cartTotalSpan.textContent = total.toFixed(3);
-}
-
-
-
-  // ---------------- Modal Qty / Remove ----------------
+  // ================= MODAL BUTTON ACTIONS =================
   document.addEventListener('click', e => {
     const i = e.target.dataset.i;
     if (i === undefined) return;
@@ -415,163 +162,71 @@ function updateCartButton() {
     updateCartButton();
   });
 
-  // ---------------- WhatsApp Send ----------------
-  sendOrderBtn.addEventListener('click', async (e) => {
-  e.preventDefault();
+  // ================= WHATSAPP RECEIPT =================
+  function generateWhatsAppReceipt(orderType, cart, customer = {}) {
 
-  if (!cart.length) return;
+    let msg = "🛍️ *New Customer Order*\n\n";
+    let grandTotal = 0;
 
-  // ================= VALIDATION =================
-  if (orderType.value === 'dining') {
-    if (!tableNo.value.trim() || !personsCount.value.trim()) {
-      alert("Please enter Table No and Number of Persons for Dining orders.");
-      return;
+    if (orderType === 'delivery') {
+      msg += `🚚 *Delivery*\n`;
+      msg += `Name: ${customer.name}\n`;
+      msg += `Mobile: ${customer.mobile}\n`;
+      msg += `Address: ${customer.address}\n\n`;
     }
-  }
 
-  if (orderType.value === 'delivery') {
-    if (!custName.value.trim() || !custMobile.value.trim() || !custAddress.value.trim()) {
-      alert("Please fill Customer Name, Mobile, and Address for Delivery orders.");
-      return;
-    }
-  }
+    msg += "🛒 *Order Items*\n";
 
-  // ⭐ get clientId from URL
-  const pathParts = window.location.pathname.split('/');
-  const clientId = pathParts[2];
-
-  // ⭐ prepare items for server
-  const apiItems = cart.map(c => ({
-    id: c.key.split('-')[0],
-    qty: c.qty
-  }));
-
-  // ================= GENERATE WHATSAPP MESSAGE FIRST =================
-  const customerData = {
-    tableNo: tableNo.value,
-    personsCount: personsCount.value,
-    name: custName.value.trim(),
-    mobile: custMobile.value.trim(),
-    address: custAddress.value.trim(),
-    lat: latInput.value,
-    lng: lngInput.value
-  };
-  const message = generateWhatsAppReceipt(orderType.value, cart, customerData);
-
-  // ================= OPEN WHATSAPP IMMEDIATELY (WORKAROUND) =================
-  const waWindow = window.open(`https://api.whatsapp.com/send?phone=97366939332&text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
-  if (!waWindow) {
-    alert("Popup blocked! Please allow popups to send WhatsApp message.");
-  }
-
-  try {
-    // ================= CALL SERVER =================
-    const res = await fetch('/api/orders/whatsapp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        clientId,
-        items: apiItems
-      })
+    cart.forEach(i => {
+      const itemTotal = i.price * i.qty;
+      grandTotal += itemTotal;
+      msg += `${i.name} x ${i.qty} = ${itemTotal.toFixed(3)} BHD\n`;
     });
 
-    const data = await res.json();
+    // DELIVERY
+    if (orderType === 'delivery') {
+      const result = calculateDelivery(customer.lat, customer.lng);
+      grandTotal += result.charge;
 
-    if (!res.ok) {
-      alert(data.error || 'Stock not available');
-      return;
+      msg += `\n🚚 Delivery (${result.distance.toFixed(2)} KM): ${result.charge.toFixed(3)} BHD\n`;
     }
 
-    // ================= RESET =================
-    cartModal.hide();
-    cart = [];
-    updateCartButton();
-    document.querySelectorAll('.qty-badge').forEach(b => b.textContent = '0');
+    msg += `\n💰 *Grand Total: ${grandTotal.toFixed(3)} BHD*`;
 
-    // ⭐ reload latest stock from DB
-    fetchMenuItems();
-
-  } catch (err) {
-    alert('Server error');
-    console.error(err);
-  }
-});
-
-  // ---------------- WhatsApp Receipt ----------------
-  function generateWhatsAppReceipt(orderType, cart, customer = {}) {
-  let msg = "🛍️ *New Customer Order*\n\n";
-
-  if (orderType === 'dining') {
-    const table = customer.tableNo || '-';
-    const persons = customer.personsCount || '-';
-    msg += `🍽️ *Dining*\nTable: ${table} | Persons: ${persons}\n\n`;
-  } else if (orderType === 'delivery') {
-    const name = customer.name || '-';
-    const mobile = customer.mobile || '-';
-    const address = customer.address || '-';
-    const lat = customer.lat || '';
-    const lng = customer.lng || '';
-
-    msg += `🚚 *Delivery*\n*Name:* ${name}\n*Mobile:* ${mobile}\n*Address:* ${address}\n`;
-    if (lat && lng) msg += `📍 Map: https://maps.google.com/?q=${lat},${lng}\n`;
-    msg += `\n`;
+    return msg;
   }
 
-  // Monospace table using triple backticks
-  msg += "🛒 *Order Items*\n";
-  msg += "```";
-  
-  const itemColWidth = 20;
-  const qtyColWidth = 3;
-  const priceColWidth = 6;
-  const totalColWidth = 6;
+  // ================= SEND ORDER =================
+  sendOrderBtn.addEventListener('click', (e) => {
 
-  msg += `Item${' '.repeat(itemColWidth - 4)} Qty  Price  Total\n`;
-  msg += '-'.repeat(itemColWidth + qtyColWidth + priceColWidth + totalColWidth + 6) + '\n';
+    e.preventDefault();
+    if (!cart.length) return;
 
-  let grandTotal = 0;
-  cart.forEach(i => {
-  const itemObj = allItems.find(it => it.id == i.key.split('-')[0]);
-  const vatEnabled = itemObj?.vatEnabled;
+    if (orderType.value === 'delivery') {
+      if (!custName.value || !custMobile.value || !custAddress.value) {
+        alert("Please complete delivery details");
+        return;
+      }
+    }
 
-  let price = i.price; // already VAT INCLUDED
+    const message = generateWhatsAppReceipt(orderType.value, cart, {
+      name: custName.value,
+      mobile: custMobile.value,
+      address: custAddress.value,
+      lat: latInput.value,
+      lng: lngInput.value
+    });
 
-const itemTotal = price * i.qty; // ⭐ DO NOT add VAT again
-grandTotal += itemTotal;
+    window.open(`https://api.whatsapp.com/send?phone=97366939332&text=${encodeURIComponent(message)}`, '_blank');
+  });
 
-  let name = i.name;
-  if (i.variant) name += ` (${i.variant})`;
-  if (name.length > itemColWidth) name = name.substring(0, itemColWidth - 3) + '...';
-
-  const itemCol = name.padEnd(itemColWidth, ' ');
-  const qtyCol = i.qty.toString().padStart(qtyColWidth, ' ');
-  const priceCol = price.toFixed(3).padStart(priceColWidth, ' ');
-  const totalCol = itemTotal.toFixed(3).padStart(totalColWidth, ' ');
-
-  msg += `${itemCol} ${qtyCol} ${priceCol} ${totalCol}${vatEnabled ? ' (VAT incl)' : ''}\n`;
-});
-
-
-  msg += '-'.repeat(itemColWidth + qtyColWidth + priceColWidth + totalColWidth + 6) + '\n';
-  msg += "```"; // end monospace
-
-  // Bold Grand Total outside code block
-  msg += `\n💰 *Grand Total: ${grandTotal.toFixed(3)} BHD*\n`;
-  msg += "\n📌 Please process this order promptly.";
-
-  return msg;
-}
-
-
-  // ================= GPS / AUTO DETECT ADDRESS =================
+  // ================= GPS AUTO DETECT =================
   autoAddressBtn?.addEventListener('click', () => {
 
     if (!navigator.geolocation) {
-      alert("GPS not supported on this device");
+      alert("GPS not supported");
       return;
     }
-
-    autoAddressBtn.innerText = "Getting location...";
 
     navigator.geolocation.getCurrentPosition(async (pos) => {
 
@@ -581,26 +236,19 @@ grandTotal += itemTotal;
       latInput.value = lat;
       lngInput.value = lng;
 
+      renderCartModal();
+
       try {
         const res = await fetch(
           `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
         );
         const data = await res.json();
-        custAddress.value = data.display_name ? data.display_name.trim() : `${lat}, ${lng}`;
-        autoAddressBtn.innerText = "📍 Address Detected ✓";
+        custAddress.value = data.display_name || `${lat}, ${lng}`;
       } catch {
         custAddress.value = `${lat}, ${lng}`;
-        autoAddressBtn.innerText = "📍 Location Added";
       }
 
-    }, (err) => {
-      autoAddressBtn.innerText = "📍 Auto Detect Address";
-      alert("Location permission denied or error");
-      console.error(err);
     });
-
   });
 
-  // ---------------- Start ----------------
-  fetchMenuItems();
 });
